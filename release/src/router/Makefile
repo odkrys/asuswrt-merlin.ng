@@ -1177,7 +1177,7 @@ obj-$(RTCONFIG_STRACE) += strace
 
 obj-$(RTCONFIG_LLDP) += openlldp
 
-obj-n += lsof
+obj-y += lsof
 obj-$(RTCONFIG_IPERF) += iperf
 
 obj-$(RTCONFIG_PUSH_EMAIL) += openssl
