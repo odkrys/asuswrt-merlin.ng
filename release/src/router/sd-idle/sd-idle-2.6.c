@@ -457,7 +457,7 @@ _disk_active (
     // if was not spinning, inform spinning up
     if ( _is_bit_clear ( _spinning, disk ) )
     {
-    _log ( LOG_INFO, "%s", _transition_message ( disk, "up", msg_buf ) );
+        _log ( LOG_INFO, "%s", _transition_message ( disk, "up", msg_buf ) );
         _bit_set ( _spinning, disk );
     }
 
