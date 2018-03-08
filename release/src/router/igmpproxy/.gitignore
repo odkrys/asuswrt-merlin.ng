@@ -16,4 +16,15 @@ src/Makefile
 src/igmpproxy
 src/os.h
 autom4te.cache
+Makefile.in
+aclocal.m4
+compile
+config.guess
+config.sub
+configure
+depcomp
+doc/Makefile.in
+install-sh
+missing
+src/Makefile.in
 

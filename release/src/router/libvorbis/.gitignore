@@ -33,3 +33,4 @@ vorbisfile-uninstalled.pc
 vorbisfile.pc
 vq/Makefile
 autom4te.cache
+doc/Doxyfile

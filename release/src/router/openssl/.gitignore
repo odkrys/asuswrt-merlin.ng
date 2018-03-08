@@ -143,4 +143,11 @@ test/dtlstest
 test/dtlstest.c
 test/sslv2conftest
 test/sslv2conftest.c
+/apps/Makefile.save
+/crypto/evp/Makefile.save
+/crypto/idea/Makefile.save
+/include/openssl/idea.h
+/test/Makefile.save
+/test/fatalerrtest
+/test/fatalerrtest.c
 
