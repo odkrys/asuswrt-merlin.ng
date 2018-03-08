@@ -182,6 +182,7 @@ reload)
 	;;
 restart)
 	$IPSEC_SBINDIR/$IPSEC_SCRIPT stop
+	ip rule del pref 220 2>/dev/null
 	sleep 2
 	shift
 	exec $IPSEC_SBINDIR/$IPSEC_SCRIPT start "$@"
@@ -256,6 +257,7 @@ stop)
 		if [ -n "$spid" ]
 		then
 			kill $spid 2>/dev/null
+			ip rule del pref 220 2>/dev/null
 			loop=11
 			while [ $loop -gt 0 ] ; do
 				kill -0 $spid 2>/dev/null || break
@@ -265,6 +267,7 @@ stop)
 			if [ $loop -eq 0 ]
 			then
 				kill -KILL $spid 2>/dev/null
+				ip rule del pref 220 2>/dev/null
 				rm -f $IPSEC_STARTER_PID
 			fi
 		fi
