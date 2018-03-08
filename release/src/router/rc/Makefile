@@ -513,7 +513,7 @@ endif
 ifeq ($(RTCONFIG_NEW_USER_LOW_RSSI),y)
 #ifeq ($(RTCONFIG_ADV_RAST),y)
 #ifeq ($(RTCONFIG_CFGSYNC),y)
-CFLAGS += -I$(TOP)/json-c
+CFLAGS += -I$(TOP)/json-c -I$(TOP)/cfg_mnt
 LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
 LDFLAGS += -lm -lpthread
 #endif
