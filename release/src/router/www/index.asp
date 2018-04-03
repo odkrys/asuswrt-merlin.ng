@@ -215,7 +215,7 @@ function initial(){
 		var html = '<a id="clientStatusLink" href="device-map/amesh.asp" target="statusframe">';
 		html += '<div id="iconAMesh" class="iconAMesh_dis" style="margin-top:20px;" onclick="clickEvent(this);"></div>';
 		html += '</a>';
-		html += '<div class="clients" id="ameshNumber" style="cursor:pointer;">AiMesh Node: <span>0</span></div>';/* untranslated */
+		html += '<div class="clients" id="ameshNumber" style="cursor:pointer;"><#AiMesh_Node#>: <span>0</span></div>';
 		$("#ameshContainer").html(html);
 		require(['/require/modules/amesh.js'], function(){
 			updateAMeshCount();
@@ -735,7 +735,7 @@ function clickEvent(obj){
 							stitle = "<#menu5_4_4#> Status";
 					}
 					else	
-						stitle = "Primary WAN status";
+						stitle = "<#statusTitle_Primary_WAN#>";
 				}
 				else{
 					if(dualwan_second_if == "wan")
@@ -749,14 +749,14 @@ function clickEvent(obj){
 							stitle = "<#menu5_4_4#> Status";
 					}
 					else
-						stitle = "Secondary WAN status";
+						stitle = "<#statusTitle_Secondary_WAN#>";
 				}
 			}
 			else {
 				if(obj.id.indexOf("primary") != -1)
-					stitle = "Primary WAN status"; /*untranslated*/
+					stitle = "<#statusTitle_Primary_WAN#>";
 				else
-					stitle = "Secondary WAN status"; /*untranslated*/
+					stitle = "<#statusTitle_Secondary_WAN#>";
 			}
 		}
 
@@ -1516,11 +1516,11 @@ function popupEditBlock(clientObj){
 		}
 		if(clientObj.isLogin) {
 			document.getElementById('client_login').style.display = "";
-			document.getElementById('client_login').innerHTML = "logged-in-user";
+			document.getElementById('client_login').innerHTML = "<#Clientlist_Logged_In_User#>";
 		}
 		if(clientObj.isPrinter) {
 			document.getElementById('client_printer').style.display = "";
-			document.getElementById('client_printer').innerHTML = "Printer";
+			document.getElementById('client_printer').innerHTML = "<#Clientlist_Printer#>";
 		}
 		if(clientObj.isITunes) {
 			document.getElementById('client_iTunes').style.display = "";
@@ -2001,16 +2001,10 @@ function updateClientsCount() {
 		success: function(response){
 			var re_tune_client_count = function() {
 				var count = 0;
-				var fromNetworkmapd_array = [];
+				count = fromNetworkmapd_maclist[0].length;
 				for(var i in fromNetworkmapd_maclist[0]){
 					if (fromNetworkmapd_maclist[0].hasOwnProperty(i)) {
-						fromNetworkmapd_array[fromNetworkmapd_maclist[0][i]] = 1;
-					}
-				}
-				count = fromNetworkmapd_maclist[0].length;
-				for(var i in get_cfg_clientlist[0]){
-					if (get_cfg_clientlist[0].hasOwnProperty(i)) {
-						if(fromNetworkmapd_array[get_cfg_clientlist[0][i].mac] != undefined)
+						if(clientList[fromNetworkmapd_maclist[0][i]].amesh_isRe)
 							count--;
 					}
 				}
@@ -2080,7 +2074,7 @@ function closeClientDetailView() {
 <iframe name="hidden_frame" id="hidden_frame" width="0" height="0" frameborder="0" scrolling="no"></iframe>
 
 <form method="post" name="form" id="ruleForm" action="/start_apply.htm" target="hidden_frame">
-<input type="hidden" name="current_page" value="<% rel_index_page(); %>">
+<input type="hidden" name="current_page" value="">
 <input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
 <input type="hidden" name="wl_auth_mode_x" value="<% nvram_get("wl0_auth_mode_x"); %>">
@@ -2097,8 +2091,8 @@ function closeClientDetailView() {
 </form>
 <!-- Start for Editing client list-->
 <form method="post" name="list_form" id="list_form" action="/start_apply2.htm" target="hidden_frame">
-	<input type="hidden" name="current_page" value="<% rel_index_page(); %>">
-	<input type="hidden" name="next_page" value="<% rel_index_page(); %>">
+	<input type="hidden" name="current_page" value="">
+	<input type="hidden" name="next_page" value="">
 	<input type="hidden" name="modified" value="0">
 	<input type="hidden" name="flag" value="background">
 	<input type="hidden" name="action_mode" value="apply">
@@ -2117,8 +2111,8 @@ function closeClientDetailView() {
 </form>
 
 <form method="post" name="maclist_form" id="maclist_form" action="/start_apply2.htm" target="hidden_frame">
-	<input type="hidden" name="current_page" value="<% rel_index_page(); %>">
-	<input type="hidden" name="next_page" value="<% rel_index_page(); %>">
+	<input type="hidden" name="current_page" value="">
+	<input type="hidden" name="next_page" value="">
 	<input type="hidden" name="modified" value="0">
 	<input type="hidden" name="flag" value="">
 	<input type="hidden" name="action_mode" value="apply_new">
@@ -2144,8 +2138,8 @@ function closeClientDetailView() {
 	<input type="hidden" name="action_mode" value="apply">
 	<input type="hidden" name="action_script" value="restart_networkmap">
 	<input type="hidden" name="action_wait" value="2">
-	<input type="hidden" name="current_page" value="<% rel_index_page(); %>">
-	<input type="hidden" name="next_page" value="<% rel_index_page(); %>">
+	<input type="hidden" name="current_page" value="">
+	<input type="hidden" name="next_page" value="">
 	<input type="hidden" name="networkmap_enable" value="<% nvram_get("networkmap_enable"); %>">
 </form>
 
@@ -2277,7 +2271,7 @@ function closeClientDetailView() {
 								<div class="type15" onclick="select_image(this.className);" title="ROG"></div><!--untranslated-->
 							</td>
 							<td>
-								<div class="type18" onclick="select_image(this.className);" title="Printer"></div><!--untranslated-->
+								<div class="type18" onclick="select_image(this.className);" title="<#Clientlist_Printer#>"></div>
 							</td>
 							<td>
 								<div class="type19" onclick="select_image(this.className);" title="Windows Phone"></div><!--untranslated-->
