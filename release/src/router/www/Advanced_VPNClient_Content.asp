@@ -132,8 +132,8 @@ function initial(){
 	show_menu();
 
 	if(openvpnd_support) {
-		var vpn_client_array = {"OpenVPN" : ["OpenVPN", "Advanced_OpenVPNClient_Content.asp"], "PPTP" : ["PPTP/L2TP", "Advanced_VPNClient_Content.asp"]};
-		$('#divSwitchMenu').html(gen_switch_menu(vpn_client_array, "PPTP"));
+		var vpn_client_array = {"OpenVPN" : ["OpenVPN", "Advanced_OpenVPNClient_Content.asp"], "IPSec" : ["IPSec", "Advanced_VPNClient_Content.asp"]};
+		$('#divSwitchMenu').html(gen_switch_menu(vpn_client_array, "IPSec"));
 		document.getElementById("divSwitchMenu").style.display = "";
 	}
 
@@ -546,7 +546,7 @@ function tabclickhandler(_type){
 	switch(_type) {
 		case 0 :
 		case 1 :
-			tab_id = "pptp";
+			tab_id = "ipsec";
 			break;
 		case 2 :
 			tab_id = "openvpn";
@@ -555,8 +555,8 @@ function tabclickhandler(_type){
 			tab_id = "ipsec";
 			break;
 	}
-	document.getElementById('pptpcTitle_' + tab_id + '').className = "vpnClientTitle_td_unclick";
-	document.getElementById('l2tpcTitle_' + tab_id + '').className = "vpnClientTitle_td_unclick";
+//	document.getElementById('pptpcTitle_' + tab_id + '').className = "vpnClientTitle_td_unclick";
+//	document.getElementById('l2tpcTitle_' + tab_id + '').className = "vpnClientTitle_td_unclick";
 //	if(openvpnd_support)
 //		document.getElementById('opencTitle_' + tab_id + '').className = "vpnClientTitle_td_unclick";
 	if(ipsec_cli_support)
@@ -566,13 +566,20 @@ function tabclickhandler(_type){
 	document.getElementById('openvpnc_setting_ipsec').style.display = "none";	
 	document.getElementById('trPPTPOptions').style.display = "none";
 	if(_type == 0){
-		save_flag = "PPTP";
-		document.form.vpnc_type.value = "PPTP";
-		document.vpnclientForm.vpnc_type.value = "PPTP";
-		document.getElementById('pptpcTitle_' + tab_id + '').className = "vpnClientTitle_td_click";
-		document.getElementById('openvpnc_setting').style.display = "block";
-		document.getElementById('trPPTPOptions').style.display = "";
-		adjust_panel_block_top("openvpnc_setting", 200);
+//		save_flag = "PPTP";
+//		document.form.vpnc_type.value = "PPTP";
+//		document.vpnclientForm.vpnc_type.value = "PPTP";
+//		document.getElementById('pptpcTitle_' + tab_id + '').className = "vpnClientTitle_td_click";
+//		document.getElementById('openvpnc_setting').style.display = "block";
+//		document.getElementById('trPPTPOptions').style.display = "";
+//		adjust_panel_block_top("openvpnc_setting", 200);
+		save_flag = "IPSec";
+		update_unit_option();		
+		document.form.vpnc_type.value = "IPSec";
+		document.vpnclientForm.vpnc_type.value = "IPSec";
+		document.getElementById('ipsecTitle_' + tab_id + '').className = "vpnClientTitle_td_click";
+		document.getElementById('openvpnc_setting_ipsec').style.display = "block";	
+		adjust_panel_block_top("openvpnc_setting_ipsec", 50);
 	}
 	else if(_type == 1){
 		save_flag = "L2TP";
@@ -1374,8 +1381,8 @@ function gen_vpnc_tab_list(_type) {
 	$('#divTabMenu_' + _type + '').empty();
 	code += "<table width='100%' border='0' align='left' cellpadding='0' cellspacing='0' style='table-layout: fixed;'>";
 	code += "<tr>";
-	code += "<td align='center' id='pptpcTitle_" + _type + "' onclick='tabclickhandler(0);'>PPTP</td>";
-	code += "<td align='center' id='l2tpcTitle_" + _type + "' onclick='tabclickhandler(1);'>L2TP</td>";
+//	code += "<td align='center' id='pptpcTitle_" + _type + "' onclick='tabclickhandler(0);'>PPTP</td>";
+//	code += "<td align='center' id='l2tpcTitle_" + _type + "' onclick='tabclickhandler(1);'>L2TP</td>";
 //	if(openvpnd_support) {
 //		code += "<td align='center' id='opencTitle_" + _type + "' onclick='tabclickhandler(2);'>OpenVPN</td>";
 //	}
@@ -1543,8 +1550,8 @@ function editIPSecProfile(mode) {
 	}
 	gen_vpnc_tab_list("ipsec");
 	$("#openvpnc_setting_ipsec").fadeIn(300);
-	document.getElementById("pptpcTitle_ipsec").style.display = "none";
-	document.getElementById("l2tpcTitle_ipsec").style.display = "none";
+//	document.getElementById("pptpcTitle_ipsec").style.display = "none";
+//	document.getElementById("l2tpcTitle_ipsec").style.display = "none";
 //	if(openvpnd_support)
 //		document.getElementById("opencTitle_ipsec").style.display = "none";
 	document.getElementById("ipsecTitle_ipsec").style.display = "";

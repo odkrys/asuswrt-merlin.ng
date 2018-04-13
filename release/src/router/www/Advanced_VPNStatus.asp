@@ -692,20 +692,6 @@ function refresh_ipsec_data() {
 					</tr>
 
 				</table>
-				<br>
-				<table width="100%" id="vpnc" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
-					<thead>
-						<tr>
-							<td>PPTP/L2TP Clients<span id="vpnc_Block_Running" style="background: transparent;"></span></td>
-						</tr>
-					</thead>
-					<tr>
-						<td style="border: none;">
-							<div id="vpnc_clientlist_Block"></div>
-						</td>
-					</tr>
-
-				</table>
 
 				<div class="apply_gen">
 					<input name="button" type="button" class="button_gen" onclick="applyRule();" value="<#CTL_refresh#>"/>
