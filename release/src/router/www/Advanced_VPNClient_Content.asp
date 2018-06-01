@@ -132,8 +132,8 @@ function initial(){
 	show_menu();
 
 	if(openvpnd_support) {
-		var vpn_client_array = {"OpenVPN" : ["OpenVPN", "Advanced_OpenVPNClient_Content.asp"], "IPSec" : ["IPSec", "Advanced_VPNClient_Content.asp"]};
-		$('#divSwitchMenu').html(gen_switch_menu(vpn_client_array, "IPSec"));
+		var vpn_client_array = {"OpenVPN" : ["OpenVPN", "Advanced_OpenVPNClient_Content.asp"], "Site-to-Site" : ["Site-to-Site", "Advanced_VPNClient_Content.asp"]};
+		$('#divSwitchMenu').html(gen_switch_menu(vpn_client_array, "Site-to-Site"));
 		document.getElementById("divSwitchMenu").style.display = "";
 	}
 
