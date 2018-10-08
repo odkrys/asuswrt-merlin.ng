@@ -162,7 +162,29 @@ function initial(){
 	}
 
 	detect_CPU_RAM();
-	set_NM_height();
+
+	var table_height = document.getElementById("rt_table").clientHeight;
+	if(table_height != "0" || table_height != "")
+		set_NM_height(table_height);
+	else {
+		document.body.style.overflow = "hidden";
+		var errorCount = 0;
+		var readyStateCheckInterval = setInterval(function() {
+			table_height = document.getElementById("rt_table").clientHeight;
+			if (table_height != "0" || table_height != "") {
+				clearInterval(readyStateCheckInterval);
+				set_NM_height(table_height);
+			}
+			else {
+				if(errorCount > 5) {
+					clearInterval(readyStateCheckInterval);
+					table_height = parent.document.getElementById("NM_table").style.height;
+					set_NM_height(table_height);
+				}
+				errorCount++;
+			}
+		}, 10);
+	}
 }
 
 function tabclickhandler(wl_unit){
