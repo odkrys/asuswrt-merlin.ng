@@ -234,7 +234,7 @@ function show_etherstate(){
 				overlib_str = "<p><#MAC_Address#>:</p>" + devicemac;
 
 				if (clientList[devicemac])
-					hostname = (clientList[devicemac].nickName == "") ? clientList[devicemac].hostname : clientList[devicemac].nickName;
+					hostname = (clientList[devicemac].nickName == "") ? clientList[devicemac].name : clientList[devicemac].nickName;
 
 				if ((typeof hostname !== 'undefined') && (hostname != "")) {
 					devicename = '<span class="ClientName" onclick="oui_query_full_vendor(\'' + devicemac +'\');;overlib_str_tmp=\''+ overlib_str +'\';return overlib(\''+ overlib_str +'\');" onmouseout="nd();" style="cursor:pointer; text-decoration:underline;">'+ hostname +'</span>';
@@ -477,7 +477,7 @@ function update_sysinfo(e){
                 <td valign="top">
                 <div>&nbsp;</div>
                 <div class="formfonttitle">Tools - System Information</div>
-                <div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"></div>
+		<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 
 				<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
 					<thead>

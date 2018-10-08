@@ -23,11 +23,6 @@
 	margin-bottom:5px;
 }
 
-.line_image{
-	margin:5px 0px 0px 10px; 
-	*margin-top:-10px;
-}
-
 .ram_table{
 	height:30px;
 	text-align:center;
@@ -415,8 +410,8 @@ function generate_cpu_field(){
 		<table width="96%" border="1" align="center" cellpadding="4" cellspacing="0" class="table1px" id="cpu" style="margin: 0px 8px;">
 			<tr>
 				<td >
-					<div class="title">CPU</div>
-					<img class="line_image" src="/images/New_ui/networkmap/linetwo2.png">
+					<div class="title"><#Status_CPU#></div>
+					<div style="margin-top: 5px;*margin-top:-70px;" class="line_horizontal"></div>
 				</td>
 			</tr >
 			<tr>
@@ -474,21 +469,21 @@ function generate_cpu_field(){
 			<table width="96%" border="1" align="center" cellpadding="4" cellspacing="0" class="table1px" style="margin: 0px 8px;">	
 			<tr>
 				<td colspan="3">		
-					<div class="title">RAM</div>
-					<img class="line_image" src="/images/New_ui/networkmap/linetwo2.png">
+					<div class="title"><#Status_RAM#></div>
+					<div style="margin-top: 5px;*margin-top:-70px;" class="line_horizontal"></div>
 				</td>
 			</tr>
 			<tr class="ram_table">
 				<td>
-					<div>Used</div>	  			
+					<div><#Status_Used#></div>	  			
 					<div id="ram_used_info"></div>	
 				</td>
 				<td>
-					<div>Free</div>
+					<div><#Status_Free#></div>
 					<div id="ram_free_info"></div>	  			
 				</td>
 				<td>
-					<div>Total</div>	  			
+					<div><#Status_Total#></div>	  			
 					<div id="ram_total_info"></div>	  			
 				</td>
 			</tr>  

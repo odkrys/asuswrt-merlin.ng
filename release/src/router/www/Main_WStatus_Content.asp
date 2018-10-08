@@ -40,6 +40,7 @@ var timedEvent = 0;
 function initial(){
 	show_menu();
 	refreshRate = getRefresh();
+	showhide("dfs_toggle", dfs_chanarray.length > 1 ? "1" : "0");
 	get_wlclient_list();
 
 	if (bcm_mumimo_support) {
@@ -53,7 +54,7 @@ function redraw(){
 	if (dataarray24.length == 0) {
 		document.getElementById('wifi24headerblock').innerHTML='<span class="wifiheader" style="font-size: 125%;">Wireless 2.4 GHz is disabled.</span>';
 	} else {
-		display_header(dataarray24, 'Wireless 2.4 GHz', document.getElementById('wifi24headerblock'));
+		display_header(dataarray24, 'Wireless 2.4 GHz', document.getElementById('wifi24headerblock'), false);
 		display_clients(wificlients24, document.getElementById('wifi24block'));
 	}
 
@@ -62,20 +63,20 @@ function redraw(){
 			if (dataarray5.length == 0) {
 				document.getElementById('wifi5headerblock').innerHTML='<span class="wifiheader" style="font-size: 125%;">Wireless 5 GHz-1 is disabled.</span>';
 			} else {
-				display_header(dataarray5, 'Wireless 5 GHz-1', document.getElementById('wifi5headerblock'));                                               
+				display_header(dataarray5, 'Wireless 5 GHz-1', document.getElementById('wifi5headerblock'), true);
 				display_clients(wificlients5, document.getElementById('wifi5block'));
 			}
 			if (dataarray52.length == 0) {
 				document.getElementById('wifi52headerblock').innerHTML='<span class="wifiheader" style="font-size: 125%;">Wireless 5 GHz-2 is disabled.</span>';
 			} else {
-				display_header(dataarray52, 'Wireless 5 GHz-2', document.getElementById('wifi52headerblock'));
+				display_header(dataarray52, 'Wireless 5 GHz-2', document.getElementById('wifi52headerblock'), false);
 				display_clients(wificlients52, document.getElementById('wifi52block'));
 			}
 		} else {
 			if (dataarray5.length == 0) {
 				document.getElementById('wifi5headerblock').innerHTML='<span class="wifiheader" style="font-size: 125%;">Wireless 5 GHz is disabled.</span>';
 			} else {
-				display_header(dataarray5, 'Wireless 5 GHz', document.getElementById('wifi5headerblock'));
+				display_header(dataarray5, 'Wireless 5 GHz', document.getElementById('wifi5headerblock'), true);
 				display_clients(wificlients5, document.getElementById('wifi5block'));
 			}
 		}
@@ -85,6 +86,8 @@ function redraw(){
 
 function display_clients(clientsarray, obj) {
 	var code, i, client, overlib_str;
+	var mac, ipaddr, hostname;
+	var nmapentry;
 
 	code = '<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">';
 	code += '<thead><tr>';
@@ -100,16 +103,35 @@ function display_clients(clientsarray, obj) {
 			code += '<tr>';
 
 			// Mac
-			overlib_str = "<p><#MAC_Address#>:</p>" + client[0];
-			code += '<td><span style="margin-top:-15px; color: white;" class="link" onclick="oui_query_full_vendor(\'' + client[0] +'\');overlib_str_tmp=\''+ overlib_str +'\';return overlib(\''+ overlib_str +'\');" onmouseout="nd();" style="cursor:pointer; text-decoration:underline;">'+ client[0] +'</span>';
+			mac = client[0];
+			overlib_str = "<p><#MAC_Address#>:</p>" + mac;
+			code += '<td><span style="margin-top:-15px; color: white;" class="link" onclick="oui_query_full_vendor(\'' + mac +'\');overlib_str_tmp=\''+ overlib_str +'\';return overlib(\''+ overlib_str +'\');" onmouseout="nd();" style="cursor:pointer; text-decoration:underline;">'+ mac +'</span>';
 
-			if (client[2].length > 24) {		// Name
-				code +='<br><span style="margin-top:-15px; color: cyan;" title="' + client[2] + '">'+ client[2].substring(0,20) +'...</span></td>';
-			} else {
-				code +='<br><span style="margin-top:-15px; color: cyan;">'+ htmlEnDeCode.htmlEncode(client[2]) +'</span></td>';
+			if (typeof clientList[mac] === "undefined")
+				nmapentry = false;
+			else
+				nmapentry = true;
+
+			hostname = client[2];	// Name
+			if (nmapentry && hostname == "<unknown>") {
+				if (clientList[mac].nickName != "")
+					hostname = clientList[mac].nickName;
+				else if (clientList[mac].name != "")
+					hostname = clientList[mac].name;
 			}
 
-			code += '<td style="vertical-align: top;">' + htmlEnDeCode.htmlEncode(client[1]);	// IPv4
+			if (hostname.length > 24) {		// Name
+				code +='<br><span style="margin-top:-15px; color: cyan;" title="' + hostname + '">'+ hostname.substring(0,20) +'...</span></td>';
+			} else {
+				code +='<br><span style="margin-top:-15px; color: cyan;">'+ htmlEnDeCode.htmlEncode(hostname) +'</span></td>';
+			}
+
+			ipaddr = client[1];
+			if (nmapentry && ipaddr == "<unknown>") {
+				if (clientList[mac].ip != "")
+					ipaddr = clientList[mac].ip;
+			}
+			code += '<td style="vertical-align: top;">' + htmlEnDeCode.htmlEncode(ipaddr);	// IPv4
 			code += '<br><span style="margin-top:-15px; color: cyan;">'+ client[3] +'</span></td>';	// IPv6
 
 
@@ -128,8 +150,9 @@ function display_clients(clientsarray, obj) {
 }
 
 
-function display_header(dataarray, title, obj) {
+function display_header(dataarray, title, obj, show_dfs) {
 	var code;
+	var channel, i;
 
 	code = '<table width="100%" style="border: none;">';
 	code += '<thead><tr><span class="wifiheader" style="font-size: 125%;">' + title +'</span></tr></thead>';
@@ -142,8 +165,25 @@ function display_header(dataarray, title, obj) {
 	if (dataarray[3] != 0)
 		code += '<td><span class="wifiheader">Noise: </span>' + dataarray[3] + ' dBm</td>';
 
-	code += '<td><span class="wifiheader">Channel: </span>'+ dataarray[4] + '</td> <td><span class="wifiheader">BSSID: </span>' + dataarray[5] +'</td></tr></table>';
+	code += '<td><span class="wifiheader">Channel: </span>'+ dataarray[4] + '</td> <td><span class="wifiheader">BSSID: </span>' + dataarray[5] +'</td></tr>';
 
+	if (show_dfs && dfs_chanarray.length > 1) {
+                code += '<tr><td colspan="2"><span class="wifiheader">DFS State: </span>' + dfs_statusarray[0] + '</td>';
+                code += '<td><span class="wifiheader">Time elapsed: </span>' + dfs_statusarray[1] + '</td>';
+                code += '<td><span class="wifiheader">Channel cleared for radar: </span>' + dfs_statusarray[2] + '</td></tr>';
+
+		state = getRadioValue(document.form.show_dfs) == "1" ? "" : "display: none;";
+		code += '</table><table id="dfstable" width="100%" style="border: none;'+state+'">';
+
+		code += '<tr><td><span class="wifiheader"><b>Channel States</b></td></tr>';
+
+		for (i = 0; i < dfs_chanarray.length-1; ++i) {
+			channel = dfs_chanarray[i];
+			code += '<tr><td><span class="wifiheader">Channel ' + channel[0] + '</span> ' + channel[1] + '</td></tr>';
+		}
+	}
+
+	code += '</table>';
 	obj.innerHTML = code;
 }
 
@@ -225,7 +265,7 @@ function setRefresh(obj) {
 								<td valign="top">
 									<div>&nbsp;</div>
 									<div class="formfonttitle"><#System_Log#> - <#menu5_7_4#></div>
-									<div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"></div>
+									<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 									<div class="formfontdesc">List of connected Wireless clients</div>
 
 									<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
@@ -241,6 +281,14 @@ function setRefresh(obj) {
 												</select>
 											</td>
 										</tr>
+										<tr id="dfs_toggle" style="display:none;">
+											<th>Display DFS channel details</th>
+											<td>
+												<input type="radio" name="show_dfs" class="input" value="1" onclick="showhide('dfstable',1);"><#checkbox_Yes#>
+												<input type="radio" name="show_dfs" class="input" checked value="0" onclick="showhide('dfstable',0);"><#checkbox_No#>
+											</td>
+										</tr>
+
 									</table>
 									<br>
 									<div id="wifi24headerblock"></div>

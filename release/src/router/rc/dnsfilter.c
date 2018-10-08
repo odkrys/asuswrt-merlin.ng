@@ -15,7 +15,7 @@
  * MA 02111-1307 USA
  *
  *
- * Copyright 2014-2017 Eric Sauvageau.
+ * Copyright 2014-2018 Eric Sauvageau.
  *
  */
 
@@ -32,12 +32,12 @@ int get_dns_filter(int proto, int mode, char **server);
 int get_dns_filter(int proto, int mode, char **server)
 {
 	int count = 0;
-	char *server_table[13][2] = {
+	char *server_table[][2] = {
 		{ "", "" },			/* 0: Unfiltered */
 		{ "208.67.222.222", "" },	/* 1: OpenDNS */
-		{ "199.85.126.10", "" },	/* 2: Norton Connect Safe A (Security) */
-		{ "199.85.126.20", "" },	/* 3: Norton Connect Safe B (Security + Adult) */
-		{ "199.85.126.30", "" },	/* 4: Norton Connect Safe C (Sec. + Adult + Violence */
+		{ "", "" },	/* 2: Discontinued Norton Connect Safe */
+		{ "", "" },	/* 3: Discontinued Norton Connect Safe */
+		{ "", "" },	/* 4: Discontinued Norton Connect Safe */
 		{ "77.88.8.88", "" },		/* 5: Secure Mode safe.dns.yandex.ru */
 		{ "77.88.8.7", "" },		/* 6: Family Mode family.dns.yandex.ru */
 		{ "208.67.222.123", "" },	/* 7: OpenDNS Family Shield */
@@ -45,23 +45,25 @@ int get_dns_filter(int proto, int mode, char **server)
 		{ nvram_safe_get("dnsfilter_custom2"), "" },		/* 9: Custom2 */
 		{ nvram_safe_get("dnsfilter_custom3"), "" },		/* 10: Custom3 */
 		{ nvram_safe_get("dhcp_dns1_x"), "" },			/* 11: Router */
-		{ "8.26.56.26", "" }		/* 12: Comodo Secure DNS */
+		{ "8.26.56.26", "" },		/* 12: Comodo Secure DNS */
+		{ "9.9.9.9", "" }		/* 13: Quad9 */
         };
 #ifdef RTCONFIG_IPV6
 	char *server6_table[][2] = {
 		{"", ""},		/* 0: Unfiltered */
 		{"", ""},		/* 1: OpenDNS */
-		{"", ""},		/* 2: Norton Connect Safe A (Security) */
-		{"", ""},		/* 3: Norton Connect Safe B (Security + Adult) */
-		{"", ""},		/* 4: Norton Connect Safe C (Sec. + Adult + Violence */
+		{"", ""},		/* 2: Discontinued Norton Connect Safe */
+		{"", ""},		/* 3: Discontinued Norton Connect Safe */
+		{"", ""},		/* 4: Discontinued Norton Connect Safe */
 		{"2a02:6b8::feed:bad","2a02:6b8:0:1::feed:bad"},		/* 5: Secure Mode safe.dns.yandex.ru */
 		{"2a02:6b8::feed:a11","2a02:6b8:0:1::feed:a11"},		/* 6: Family Mode family.dns.yandex.ru */
 		{"", ""},		/* 7: OpenDNS Family Shield */
 		{"", ""},		/* 8: Custom1 - not supported yet */
 		{"", ""},		/* 9: Custom2 - not supported yet */
 		{"", ""},		/* 10: Custom3 - not supported yet */
-		{nvram_safe_get("dhcp_dns1_x"), ""},		/* 11: Router */
-		{"", ""}		/* 12: Comodo Secure DNS */
+		{"", ""},		/* 11: Router  - semi-supported, refer dnsfilter_setup_dnsmasq() */
+		{"", ""},		/* 12: Comodo Secure DNS */
+		{"2620:fe::fe", "2620:fe::9"}	/* 13: Quad9 */
         };
 #endif
 
@@ -219,6 +221,11 @@ void dnsfilter_setup_dnsmasq(FILE *fp) {
 		if (dnsmode == defmode)
 			continue;
 		count = get_dns_filter(AF_INET6, dnsmode, server);
+		if (count == 0 && dnsmode == 11) {
+			/* Workaround dynamic router address */
+			server[0] = "::";
+			count = 1;
+		}
 		if (count == 0)
 			continue;
 		fprintf(fp, "dhcp-option=dnsf%u,option6:23,[%s]", dnsmode, server[0]);

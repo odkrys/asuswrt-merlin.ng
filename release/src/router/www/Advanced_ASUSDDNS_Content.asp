@@ -71,9 +71,6 @@ var orig_le_enable = '<% nvram_get("le_enable"); %>';
 var le_state = '<% nvram_get("le_state"); %>';
 var httpd_restart = 0;
 
-var ASUS_EULA_str = '<% nvram_get("ASUS_EULA"); %>';
-var ASUS_EULA_time_str = '<% nvram_get("ASUS_EULA_time"); %>';
-
 function init(){
 	show_menu();
 	httpApi.faqURL("faq", "1034294", "https://www.asus.com", "/support/FAQ/");
@@ -89,10 +86,10 @@ function init(){
 		}
 	}
 
-	setTimeout("show_warning_message();", 100);
+	setTimeout(show_warning_message, 100);
 
 	ASUS_EULA.config(applyRule, refreshpage);
-	if(ddns_enable_x == "1" && ddns_server_x == "WWW.ASUS.COM" && (ASUS_EULA_str == "0" || ASUS_EULA_time_str == "")){
+	if(ddns_enable_x == "1" && ddns_server_x == "WWW.ASUS.COM"){
 		ASUS_EULA.check('asus');
 	}
 }
@@ -224,6 +221,7 @@ function ddns_load_body(){
                 document.getElementById("ddns_hostname_x").value = "<#asusddns_inputhint#>";
         }
 	inputCtrl(document.form.ddns_refresh_x, 1);
+	showhide("ddns_ipcheck_tr", 1);
 
         change_ddns_setting(document.form.ddns_server_x.value);
 
@@ -244,6 +242,7 @@ function ddns_load_body(){
         document.form.ddns_wildcard_x[1].disabled= 1;
 	inputCtrl(document.form.ddns_refresh_x, 0);
         showhide("wildcard_field",0);
+	showhide("ddns_ipcheck_tr", 0);
     }
 
 	if(letsencrypt_support){
@@ -290,17 +289,11 @@ function get_cert_info(){
 }
 
 function apply_eula_check(){
-	var do_applyRule = false;
-
 	if(document.form.ddns_enable_x[0].checked == true && document.form.ddns_server_x.value == "WWW.ASUS.COM"){
-		do_applyRule = ASUS_EULA.check("asus");
+		if(!ASUS_EULA.check("asus")) return false;
 	}
-	else
-		do_applyRule = true;
-
-	if(do_applyRule)
-		applyRule();
-
+	
+	applyRule();
 }
 
 function applyRule(){
@@ -662,10 +655,10 @@ function save_cert_key(){
 		  		<td bgcolor="#4D595D" valign="top"  >
 		  		<div>&nbsp;</div>
 		  		<div class="formfonttitle"><#menu5_3#> - <#menu5_3_6#></div>
-		  		<div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"></div>
+		  		<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 		 		<div class="formfontdesc"><#LANHostConfig_x_DDNSEnable_sectiondesc#></div>
 		 		<div class="formfontdesc" style="margin-top:-8px;"><#NSlookup_help#></div>
-				<div class="formfontdesc" id="wan_ip_hide2" style="color:#FFCC00; display:none;"><#LANHostConfig_x_DDNSEnable_sectiondesc2#></div>
+				<div class="formfontdesc" id="wan_ip_hide2" style="color:#FFCC00; display:none;">The wireless router currently uses a private WAN IP address.<p>This router may be in the multiple-NAT environment.  While using an External check might allow DDNS to reflect the correct IP address, this might still interfere with remote access services.</div>
 				<div class="formfontdesc" id="wan_ip_hide3" style="color:#FFCC00; display:none;"><#LANHostConfig_x_DDNSEnable_sectiondesc3#></div>
 				<div class="formfontdesc" id="lb_note" style="color:#FFCC00; display:none;"><#lb_note_ddns#></div>
 				<div class="formfontdesc" id="ddns_state" style="color:#FFCC00; display:none;"></div>
@@ -688,6 +681,15 @@ function save_cert_key(){
 				</select>
 				</td>
 			</tr>
+			<tr id="ddns_ipcheck_tr">
+				<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(50,26);">Method to retrieve WAN IP</a></th>
+                                <td>
+				<select name="ddns_ipcheck" class="input_option">
+					<option class="content_input_fd" value="0" <% nvram_match("ddns_ipcheck", "0","selected"); %>>Internal</option>
+					<option class="content_input_fd" value="1" <% nvram_match("ddns_ipcheck", "1","selected"); %>>External</option>
+				</select>
+				</td>
+			</tr>
 			<tr>
 				<th><#LANHostConfig_x_DDNSServer_itemname#></th>
 				<td>
@@ -704,6 +706,7 @@ function save_cert_key(){
 						<option value="WWW.NO-IP.COM" <% nvram_match("ddns_server_x", "WWW.NO-IP.COM","selected"); %>>WWW.NO-IP.COM</option>
 						<option value="WWW.ORAY.COM" <% nvram_match("ddns_server_x", "WWW.ORAY.COM","selected"); %>>WWW.ORAY.COM(花生壳)</option>
 						<option value="WWW.NAMECHEAP.COM" <% nvram_match("ddns_server_x", "WWW.NAMECHEAP.COM","selected"); %>>WWW.NAMECHEAP.COM</option>
+						<option value="FREEDNS.AFRAID.ORG" <% nvram_match("ddns_server_x", "FREEDNS.AFRAID.ORG","selected"); %>>FREEDNS.AFRAID.ORG</option>
 						<option value="CUSTOM" <% nvram_match("ddns_server_x", "CUSTOM","selected");  %>>Custom</option>
 					</select>
 				<a id="link" href="javascript:openLink('x_DDNSServer')" style=" margin-left:5px; text-decoration: underline;"><#LANHostConfig_x_DDNSServer_linkname#></a>
@@ -746,7 +749,7 @@ function save_cert_key(){
 				</td>
 			</tr>
 			<tr style="display:none;">
-				<th>Forced refresh interval (in days)</th>
+				<th>Forced update interval (in days)</th>
 				<td>
 					<input type="text" maxlength="3" name="ddns_refresh_x" class="input_3_table" value="<% nvram_get("ddns_refresh_x"); %>" onKeyPress="return validator.isNumber(this,event)">
 				</td>

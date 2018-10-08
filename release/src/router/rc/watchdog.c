@@ -99,7 +99,11 @@ static int bc_wps_led = 0;
 
 #ifdef RTCONFIG_AMAS
 #define AMESH_TIMEOUT_COUNT	30 * 20		/* 30 secnods */
+#ifdef RTCONFIG_LANTIQ
+#define ONBOARDING_TIMEOUT	200		/* 200 seconds */
+#else
 #define ONBOARDING_TIMEOUT	120		/* 120 seconds */
+#endif
 #endif
 
 #ifdef RTCONFIG_WPS_RST_BTN
@@ -3076,6 +3080,7 @@ void btn_check(void)
 
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 	if ((psta_exist() || psr_exist())
+		&& !dpsr_mode()
 #ifdef RTCONFIG_DPSTA
 		&& !dpsta_mode()
 #endif
@@ -3239,8 +3244,12 @@ void btn_check(void)
 
 			if (is_wps_stopped() || --wsc_timeout == 0)
 			{
-#if defined(HND_ROUTER) && defined(RTCONFIG_PROXYSTA) && defined(RTCONFIG_DPSTA)
-				if (!nvram_get_int("wps_band_x") && is_dpsta(nvram_get_int("wps_band_x")))
+#if defined(HND_ROUTER) && defined(RTCONFIG_PROXYSTA)
+				if (!nvram_get_int("wps_band_x") && (is_dpsr(nvram_get_int("wps_band_x"))
+#ifdef RTCONFIG_DPSTA
+					|| is_dpsta(nvram_get_int("wps_band_x"))
+#endif
+				))
 					eval("wl", "spatial_policy", "1");
 #endif
 				wsc_timeout = 0;
@@ -3787,7 +3796,7 @@ int need_restart_wsc = 0;
 
 static void catch_sig(int sig)
 {
-#if defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
+#if !defined(RTCONFIG_AMAS) && (defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ))
 	dbG("watchdog: skip catch_sig(), sig=[%d]\n", sig);
 	return;
 #endif
@@ -5015,9 +5024,9 @@ void regular_ddns_check(void)
 {
 #ifdef RPAC68U
 /* The workaround solution avoiding watchdog segfault on RP-AC68U. */
-	int r, wan_unit = rtk_wan_primary_ifunit(), last_unit = nvram_get_int("ddns_last_wan_unit");
+	int wan_unit = rtk_wan_primary_ifunit();
 #else
-	int r, wan_unit = wan_primary_ifunit(), last_unit = nvram_get_int("ddns_last_wan_unit");
+	int wan_unit = wan_primary_ifunit();
 #endif
 	char prefix[sizeof("wanX_YYY")];
 	struct in_addr ip_addr;
@@ -5052,27 +5061,20 @@ void regular_ddns_check(void)
 	if (!nvram_match("wans_mode", "lb") && !is_wan_connect(wan_unit))
 		return;
 
-	snprintf(prefix, sizeof(prefix), "wan%d_", wan_unit);
-	ip_addr.s_addr = *(unsigned long *)hostinfo -> h_addr_list[0];
-	//_dprintf("%s ?= %s\n", nvram_pf_get(prefix, "ipaddr"), inet_ntoa(ip_addr));
-	if (nvram_pf_match(prefix, "ipaddr", inet_ntoa(ip_addr)))
-		return;
+	// Only check nvram IP for internal IP check mode
+	if (nvram_get_int("ddns_ipcheck") == 0) {
+		snprintf(prefix, sizeof(prefix), "wan%d_", wan_unit);
+		ip_addr.s_addr = *(unsigned long *)hostinfo -> h_addr_list[0];
+		//_dprintf("%s ?= %s\n", nvram_pf_get(prefix, "ipaddr"), inet_ntoa(ip_addr));
+		if (nvram_pf_match(prefix, "ipaddr", inet_ntoa(ip_addr)))
+			return;
 
-	//_dprintf("WAN IP change!\n");
+		logmessage("watchdog", "DDNS hostname does not match current IP - launching DDNS update");
+	}
+
 	nvram_set("ddns_update_by_wdog", "1");
-	if (wan_unit != last_unit)
-		unlink("/tmp/ddns.cache");
-	logmessage("watchdog", "Hostname/IP mapping error! Restart ddns.");
-	if (last_unit != wan_unit)
-		r = notify_rc("restart_ddns");
-	else
-		r = notify_rc("start_ddns");
 
-	if (!r)
-		nvram_set_int("ddns_last_wan_unit", wan_unit);
-
-
-	return;
+	notify_rc("start_ddns");
 }
 
 void ddns_check(void)
@@ -5085,8 +5087,10 @@ void ddns_check(void)
 #endif
 
 	//_dprintf("ddns_check... %d\n", ddns_check_count);
-	if (!nvram_match("ddns_enable_x", "1"))
-		return;
+
+	// First time called (i.e. after boot)
+	if (last_unit == -1)
+		last_unit = wan_unit;
 
 #if defined(RTCONFIG_DUALWAN)
 	if (nvram_match("wans_mode", "lb")) {
@@ -5110,17 +5114,17 @@ void ddns_check(void)
 	if (!nvram_match("wans_mode", "lb") && !is_wan_connect(wan_unit))
 		return;
 
-	/* Check existence of ez-ipupdate/phddns
+	/* Check existence of inadyn/phddns
 	 * if and only if last WAN unit is equal to new WAN unit.
 	 */
 	if (last_unit == wan_unit) {
-		if (pids("ez-ipupdate"))	//ez-ipupdate is running!
-			return;
 		if (pids("phddns"))		//phddns is running!
+			return;
+		if (pids("inadyn"))
 			return;
 	}
 
-	if (nvram_match("ddns_regular_check", "1")&& !nvram_match("ddns_server_x", "WWW.ASUS.COM")) {
+	if (nvram_match("ddns_regular_check", "1")/*&& !nvram_match("ddns_server_x", "WWW.ASUS.COM")*/) {
 		int period = nvram_get_int("ddns_regular_period");
 		if (period < 30) period = 60;
 		if (ddns_check_count >= (period*2)) {
@@ -5131,7 +5135,7 @@ void ddns_check(void)
 		ddns_check_count++;
 	}
 
-	if (wan_unit == last_unit && nvram_match("ddns_updated", "1")) //already updated success
+	if ((wan_unit == last_unit) && nvram_match("ddns_updated", "1")) //already updated success
 		return;
 
 	if (wan_unit == last_unit) {
@@ -5142,7 +5146,7 @@ void ddns_check(void)
 				return;
 		}
 		else{ //non asusddns service
-			if ( !strcmp(nvram_safe_get("ddns_return_code_chk"),"auth_fail") )
+			if ( !strcmp(nvram_safe_get("ddns_return_code_chk"),"Update failed") )
 				return;
 		}
 	}
@@ -5151,8 +5155,13 @@ void ddns_check(void)
 		return;
 
 	nvram_set("ddns_update_by_wdog", "1");
-	if (wan_unit != last_unit)
+	if (wan_unit != last_unit) {
 		unlink("/tmp/ddns.cache");
+	}
+	system("rm -f /tmp/inadyn.cache/*"); /* */
+
+	ddns_update_timer = 0;	// Reset forced update timer
+
 	logmessage("watchdog", "start ddns.");
 	if (last_unit != wan_unit)
 		r = notify_rc("restart_ddns");
@@ -5162,7 +5171,6 @@ void ddns_check(void)
 	if (!r)
 		nvram_set_int("ddns_last_wan_unit", wan_unit);
 
-	return;
 }
 
 void networkmap_check()
@@ -5201,10 +5209,81 @@ void httpd_check()
 }
 
 #ifdef RTCONFIG_LANTIQ
+int need_to_restart_wifi_bak(void)
+{
+	static int not_ready_count = 0;
+
+	if (nvram_get_int("wave_ready") == 1){
+		if(!pids("wave_monitor")){
+			return 1;
+		}
+
+		if( (client_mode() || aimesh_re_mode()) ){
+		}else{
+			if(nvram_get_int("wl0_radio") == 1 &&
+					is_if_up("wlan0") != 1){
+				return 1;
+			}
+			if(nvram_get_int("wl1_radio") == 1 &&
+				is_if_up("wlan2") != 1){
+				return 1;
+			}
+		}
+	}
+
+	if(nvram_get_int("check_wave_ready") == -1){
+		nvram_unset("check_wave_ready");
+		return 1;
+	}
+
+	if(nvram_get_int("wave_ready") == 0){
+		if(!pids("wave_monitor")){
+			/* wave_ready = 0 and cannot trigger restart_wireless case */
+			if(not_ready_count > 10){
+				_dprintf("[%s][%d] count down to reload_mtlk:[%d]\n",
+					__func__, __LINE__, not_ready_count);
+				not_ready_count = 0;
+				return 1;
+			}else{
+				not_ready_count++;
+			}
+		}
+		if(nvram_get_int("wave_action_cur") == 0){
+			return 1;
+		}
+	}
+
+	not_ready_count = 0;
+	return 0;
+}
+
+int need_to_restart_wifi(void)
+{
+	if(nvram_get_int("unload_mtlk") == 1){
+		nvram_unset("unload_mtlk");
+		return 1;
+	}
+}
+
 void wave_monitor_check()
 {
 	static int drop_caches_check = 0;
 
+	if (need_to_restart_wifi()){
+		while(pidof("wave_monitor") > 0){
+			system("kill -9 `pidof wave_monitor`");
+		}
+		unload_mtlk();
+		logmessage("watchdog", "restart wave_monitor");
+		nvram_set("wave_unload_mtlk", "1");
+		nvram_unset("wave_CFG");
+		_dprintf("[%s][%d] start to unload_mtlk\n", __func__, __LINE__);
+		sleep(1);
+		start_wave_monitor();
+		sleep(5);
+		nvram_unset("wave_unload_mtlk");
+		_dprintf("[%s][%d] unload_mtlk finished\n", __func__, __LINE__);
+	}
 	if (!pids("wave_monitor")){
 		nvram_set("wave_action", "3");
 		nvram_set("wave_CFG", "1");
@@ -5943,8 +6022,11 @@ static void bt_turn_off_service()
 #ifdef RTCONFIG_AMAS
 void amas_ctl_check()
 {
+	if (
 #ifdef RTCONFIG_DPSTA
-	if (dpsta_mode() && nvram_get_int("re_mode") == 1) {
+		dpsta_mode() && 
+#endif 
+		nvram_get_int("re_mode") == 1) {
 		if (!pids("amas_bhctrl"))
 			notify_rc("start_amas_bhctrl");
 		if (!pids("amas_wlcconnect"))
@@ -5952,7 +6034,6 @@ void amas_ctl_check()
 		if (!pids("amas_lanctrl"))
 			notify_rc("start_amas_lanctrl");
 	}
-#endif
 }
 
 void onboarding_check()
@@ -5962,10 +6043,12 @@ void onboarding_check()
 	if (!nvram_match("start_service_ready", "1"))
 		return;
 
+	if (!(
 #ifdef RTCONFIG_DPSTA
-	if (!(dpsta_mode() && nvram_get_int("re_mode") == 1))
-		return;
+		dpsta_mode() && 
 #endif
+		nvram_get_int("re_mode") == 1))
+		return;
 
 	if (strlen(nvram_safe_get("cfg_group")))
 		return;
@@ -5985,10 +6068,21 @@ void cfgsync_check()
 #ifdef RTCONFIG_SW_HW_AUTH
 	if (nvram_match("x_Setting", "1") && 
 		(
+		(!pids("cfg_client") && 
 #ifdef RTCONFIG_DPSTA
-		(!pids("cfg_client") && dpsta_mode() && nvram_get_int("re_mode") == 1) ||
+			dpsta_mode() && 
 #endif
-		(!pids("cfg_server") && (is_router_mode() || access_point_mode()))))
+			nvram_get_int("re_mode") == 1
+#ifdef RTCONFIG_AMAS
+			&& (getAmasSupportMode() & AMAS_RE)
+			&& (nvram_get_int("lan_state_t") == LAN_STATE_CONNECTED)
+#endif
+		) ||
+		(!pids("cfg_server") && (is_router_mode() || access_point_mode())
+#ifdef RTCONFIG_AMAS
+			&& (getAmasSupportMode() & AMAS_CAP)
+#endif
+	)))
 	{
 		_dprintf("start cfgsync\n");
 		notify_rc("start_cfgsync");
@@ -6891,7 +6985,13 @@ void watchdog(int sig)
 							}
 						} else {
 							_dprintf("[[[WATCHDOG]]] : wakup hyd\n");
-							eval("hyd","-C","/tmp/hyd.conf");
+
+							if(nvram_get_int("hive_dbg")){
+								doSystem("hyd -C /tmp/hyd.conf -d 2>&1 | colog -p hyd -o &");		
+							}
+							else{
+								eval("hyd","-C","/tmp/hyd.conf");
+							}
 						}
 					} else {
 						int tmp_count;
@@ -7024,20 +7124,21 @@ wdp:
 #endif
 #endif
 
-	/* Force a DDNS update every "x" days - default is 21 days */
-	period = nvram_get_int("ddns_refresh_x");
-	if ((period) && (++ddns_update_timer >= (DAY_PERIOD * period))) {
-		ddns_update_timer = 0;
-		nvram_set("ddns_updated", "0");
+	if (nvram_match("ddns_enable_x", "1")) {
+		/* Force a DDNS update every "x" days - default is 21 days */
+		period = nvram_get_int("ddns_refresh_x");
+		if ((period) && (++ddns_update_timer >= (DAY_PERIOD * period))) {
+			ddns_update_timer = 0;
+			logmessage("watchdog", "Forced DDNS update (after %d days)", period);
+			notify_rc("restart_ddns");
+		} else {
+			ddns_check();
+		}
 	}
 
-	ddns_check();
 	networkmap_check();
 	httpd_check();
 	dnsmasq_check();
-#ifdef RTCONFIG_NEW_USER_LOW_RSSI
-	roamast_check();
-#endif
 #ifdef RTAC87U
 	qtn_module_check();
 #endif
