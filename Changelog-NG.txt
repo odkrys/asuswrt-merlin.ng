@@ -1,10 +1,52 @@
 Asuswrt-Merlin 384/NG Changelog
 ===============================
 
+384.8-ax (xx-xxx-xxxx)
+  - NEW: Added RT-AX88U support (based on GPL 384_4730).
+         Note that for the time being, the RT-AX88U
+         firmware will be developped in parallel, with
+         the suffix "-ax" added to the version string,
+         until Asus unifies the code on their end.
+         This special build will also contain the changes
+         from the non-ax release of the same version
+         number (384.8 in this case).
+
+
 384.8 (xx-xxx-xxxx)
-  - NEW: Merged with GPL 384_32797 (RT-AC86U binary blobs)
-  - NEW: Merged binary blobs from 384_32738 for
-         AC68/AC88/AC3100/AC5300.
+  - NEW: Merged with GPL + binary blobs from 384_32799
+         for AC68U/AC88U/AC3100/AC5300.
+  - NEW: Merged binary blobs from 384_32797 for RT-AC86U.
+  - NEW: Add LZ4 V2 option to OpenVPN compression
+         (more effective at handling already compressed
+         data)
+  - NEW: Added "extend" support to SNMP.
+  - NEW: Added CleanBrowsing to DNSFilter supported services.
+  - CHANGED: Updated dnsmasq to 2.80-7-g24b8760 (themiron)
+  - CHANGED: Removed watchdog from OpenVPN clients, to avoid
+             conflicting with more advanced configurations.
+  - CHANGED: Vsftpd TLS mode will now reuse the web server
+             certificate (including any Let's Encrypt generated
+             one).
+  - CHANGED: SSL crypto/cipher hardening for httpd (themiron)
+  - CHANGED: Syslog will now ignore bwdpi debug output (themiron)
+  - CHANGED: Reworked Wireless Log page, adding a new button to
+             view low-level details (what stock firmware shows
+             on its Wireless Log page), and removed redundant
+             option to display DFS channel details.
+  - CHANGED: Updated nettle to 3.4
+  - CHANGED: Migrated /jffs/ssl/* content to /jffs/.cert (to
+             share the same folder used by Asus stock)
+  - FIXED: UOPNP port forwarding not working in CGNAT/double NAT
+           scenario even if proper ports were forwarded upstream.
+  - FIXED: Pages based on table.js (like the port trigger one)
+           would fail to work properly under Firefox
+           (Michael Ziminsky)
+
+
+384.7_2 (21-Oct-2018)
+  - FIXED: Namecheap DDNS service not working
+  - FIXED: CVE-2018-15599 security issue in Dropbear
+  - FIXED: Potential buffer overrun in httpd
 
 
 384.7 (7-Oct-2018)

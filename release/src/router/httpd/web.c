@@ -2058,121 +2058,58 @@ ej_vpn_client_get_parameter(int eid, webs_t wp, int argc, char_t **argv)
 
 	return (websWrite(wp,"%s",""));
 }
-static int
-ej_vpn_crt_server(int eid, webs_t wp, int argc, char **argv) {
+
+void
+_get_vpn_crt_value(int eid, webs_t wp, int type, int cert, int idx) {
 	char buf[8000];
 	char file_name[32];
+	char *c;
+
+	buf[0] = '\0';
+
+	sprintf(file_name, "vpn_crt_%s%d_ca",
+		(type == OVPN_TYPE_SERVER ? "server" : "client"),
+		idx);
+
+	get_ovpn_key(type, idx, cert, buf, sizeof(buf));
+	websWrite(wp, "%s=['", file_name);
+
+	for (c = buf; *c; c++) {
+		if (isprint(*c) &&
+			*c != '"' && *c != '&' && *c != '<' && *c != '>')
+			websWrite(wp, "%c", *c);
+		else
+			websWrite(wp, "&#%d", *c);
+	}
+	websWrite(wp, "'];\n");
+}
+
+static int
+ej_vpn_crt_server(int eid, webs_t wp, int argc, char **argv) {
 	int idx = 0;
 
 	for (idx = 1; idx <= OVPN_SERVER_MAX; idx++) {
-		char *c;
 
 		//vpn_crt_server_ca
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_server%d_ca", idx);
-		get_ovpn_key(OVPN_TYPE_SERVER, idx, OVPN_SERVER_CA, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_SERVER, OVPN_SERVER_CA, idx);
 
 		//vpn_crt_server_crt
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_server%d_crt", idx);
-		get_ovpn_key(OVPN_TYPE_SERVER, idx, OVPN_SERVER_CERT, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_SERVER, OVPN_SERVER_CERT, idx);
 
 		//vpn_crt_server_key
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_server%d_key", idx);
-		get_ovpn_key(OVPN_TYPE_SERVER, idx, OVPN_SERVER_KEY, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_SERVER, OVPN_SERVER_KEY, idx);
 
 		//vpn_crt_server_dh
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_server%d_dh", idx);
-		get_ovpn_key(OVPN_TYPE_SERVER, idx, OVPN_SERVER_DH, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_SERVER, OVPN_SERVER_DH, idx);
 
 		//vpn_crt_server_crl
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_server%d_crl", idx);
-		get_ovpn_key(OVPN_TYPE_SERVER, idx, OVPN_SERVER_CRL, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_SERVER, OVPN_SERVER_CRL, idx);
 
 		//vpn_crt_server_static
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_server%d_static", idx);
-		get_ovpn_key(OVPN_TYPE_SERVER, idx, OVPN_SERVER_STATIC, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_SERVER, OVPN_SERVER_STATIC, idx);
 
 		//vpn_crt_server_extra
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_server%d_extra", idx);
-		get_ovpn_key(OVPN_TYPE_SERVER, idx, OVPN_SERVER_CA_EXTRA, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-			websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
-
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_SERVER, OVPN_SERVER_CA_EXTRA, idx);
 
 		websWrite(wp, "\n");
 	}
@@ -2180,103 +2117,27 @@ ej_vpn_crt_server(int eid, webs_t wp, int argc, char **argv) {
 }
 static int
 ej_vpn_crt_client(int eid, webs_t wp, int argc, char **argv) {
-	char buf[8000];
-	char file_name[32];
 	int idx = 0;
 
 	for (idx = 1; idx <= OVPN_CLIENT_MAX; idx++) {
-		char *c;
 
 		//vpn_crt_client_ca
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_client%d_ca", idx);
-		get_ovpn_key(OVPN_TYPE_CLIENT, idx, OVPN_CLIENT_CA, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_CLIENT, OVPN_CLIENT_CA, idx);
 
 		//vpn_crt_client_crt
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_client%d_crt", idx);
-		get_ovpn_key(OVPN_TYPE_CLIENT, idx, OVPN_CLIENT_CERT, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_CLIENT, OVPN_CLIENT_CERT, idx);
 
 		//vpn_crt_client_key
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_client%d_key", idx);
-		get_ovpn_key(OVPN_TYPE_CLIENT, idx, OVPN_CLIENT_KEY, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_CLIENT, OVPN_CLIENT_KEY, idx);
 
 		//vpn_crt_client_static
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_client%d_static", idx);
-		get_ovpn_key(OVPN_TYPE_CLIENT, idx, OVPN_CLIENT_STATIC, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_CLIENT, OVPN_CLIENT_STATIC, idx);
 
 		//vpn_crt_client_crl
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_client%d_crl", idx);
-		get_ovpn_key(OVPN_TYPE_CLIENT, idx, OVPN_CLIENT_CRL, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_CLIENT, OVPN_CLIENT_CRL, idx);
 
 		//vpn_crt_client_extra
-		memset(buf, 0, sizeof(buf));
-		memset(file_name, 0, sizeof(file_name));
-		sprintf(file_name, "vpn_crt_client%d_extra", idx);
-		get_ovpn_key(OVPN_TYPE_CLIENT, idx, OVPN_CLIENT_CA_EXTRA, buf, sizeof(buf));
-		websWrite(wp, "%s=['", file_name);
-		for (c = buf; *c; c++) {
-			if (isprint(*c) &&
-				*c != '"' && *c != '&' && *c != '<' && *c != '>')
-					websWrite(wp, "%c", *c);
-			else
-				websWrite(wp, "&#%d", *c);
-		}
-		websWrite(wp, "'];\n");
+		_get_vpn_crt_value(eid, wp, OVPN_TYPE_CLIENT, OVPN_CLIENT_CA_EXTRA, idx);
 
 		websWrite(wp, "\n");
 	}
@@ -2729,7 +2590,7 @@ int validate_instance(webs_t wp, char *name, json_object *root)
 			value = get_cgi_json(strcat_r(prefix, name+15, tmp),root);
 			if(value) {
 				ovpn_key_t key_type;
-				char buf[4096];
+				char buf[8000];
 
 				if(!strcmp(name+15, "static")) {
 					key_type = OVPN_SERVER_STATIC;
@@ -2784,7 +2645,7 @@ int validate_instance(webs_t wp, char *name, json_object *root)
 			value = get_cgi_json(strcat_r(prefix, name+15, tmp),root);
 			if(value) {
 				ovpn_key_t key_type;
-				char buf[4096];
+				char buf[8000];
 
 				if(!strcmp(name+15, "static")) {
 					key_type = OVPN_CLIENT_STATIC;
@@ -3163,7 +3024,7 @@ static int validate_apply(webs_t wp, json_object *root) {
 #ifdef RTCONFIG_OPENVPN
 			else if(!strncmp(name, "vpn_crt_server_", 15) && unit!=-1) {
 				ovpn_key_t key_type;
-				char buf[4096];
+				char buf[8000];
 
 				snprintf(prefix, sizeof(prefix), "vpn_crt_server%d_", unit);
 				(void)strcat_r(prefix, name+15, tmp);
@@ -3204,7 +3065,7 @@ static int validate_apply(webs_t wp, json_object *root) {
 			}
 			else if(!strncmp(name, "vpn_crt_client_", 15) && unit!=-1) {
 				ovpn_key_t key_type;
-				char buf[4096];
+				char buf[8000];
 
 				snprintf(prefix, sizeof(prefix), "vpn_crt_client%d_", unit);
 				(void)strcat_r(prefix, name+15, tmp);
@@ -12522,25 +12383,30 @@ do_server_ovpn_file(char *url, FILE *stream)
 	char cmd[1024];
 	memset(cmd, 0, sizeof(cmd));
 	if (check_if_dir_exist(JFFS_OPENVPN)) {
-		int i;
+		int i, unit;
+		char filename[32];
 		char file_path[128];
 		snprintf(cmd, sizeof(cmd), "tar czf %s -C %s", OPENVPN_EXPORT_FILE, JFFS_OPENVPN);
 		char *lists[] = {
-			"vpn_crt_server1_ca",
-			"vpn_crt_server1_ca_key",
-			"vpn_crt_server1_client_crt",
-			"vpn_crt_server1_client_key",
-			"vpn_crt_server1_crt",
-			"vpn_crt_server1_dh",
-			"vpn_crt_server1_key",
+			"ca",
+			"ca_key",
+			"client_crt",
+			"client_key",
+			"crt",
+			"dh",
+			"key",
+			"crl",
+			"extra",
 			NULL
 		};
+		unit = nvram_get_int("vpn_server_unit");
 		for (i = 0; i < ARRAY_SIZE(lists) && lists[i] != NULL; ++i) {
 			memset(file_path, 0, sizeof(file_path));
-			snprintf(file_path, sizeof(file_path), "%s%s", JFFS_OPENVPN, lists[i]);
+			snprintf(filename, sizeof(filename), "vpn_crt_server%d_%s", unit, lists[i]);
+			snprintf(file_path, sizeof(file_path), "%s%s", JFFS_OPENVPN, filename);
 			if(check_if_file_exist(file_path)) {
 				strlcat(cmd, " ", sizeof(cmd));
-				strlcat(cmd, lists[i], sizeof(cmd));
+				strlcat(cmd, filename, sizeof(cmd));
 			}
 		}
 		system(cmd);
@@ -12641,30 +12507,34 @@ do_upload_server_ovpn_cert_cgi(char *url, FILE *stream)
 		memset(cmd, 0, sizeof(cmd));
 		if (check_if_dir_exist(OPENVPN_UPLOAD_FLODER)) {
 			if(check_if_file_exist(OPENVPN_UPLOAD_FILE)) {
-				int i;
+				int i, unit;
 				char file_path[128];
 				char *lists[] = {
-					"vpn_crt_server1_ca",
-					"vpn_crt_server1_ca_key",
-					"vpn_crt_server1_client_crt",
-					"vpn_crt_server1_client_key",
-					"vpn_crt_server1_crt",
-					"vpn_crt_server1_dh",
-					"vpn_crt_server1_key",
+					"ca",
+					"ca_key",
+					"client_crt",
+					"client_key",
+					"crt",
+					"dh",
+					"key",
+					"crl",
+					"extra",
 					NULL
 				};
 				snprintf(cmd, sizeof(cmd), "tar -xzf %s -C %s", OPENVPN_UPLOAD_FILE, OPENVPN_UPLOAD_FLODER);
 				system(cmd);
 
+				unit = nvram_get_int("vpn_server_unit");
 				for (i = 0; i < ARRAY_SIZE(lists) && lists[i] != NULL; ++i) {
 					memset(file_path, 0, sizeof(file_path));
-					snprintf(file_path, sizeof(file_path), "%s/%s", OPENVPN_UPLOAD_FLODER, lists[i]);
+					snprintf(file_path, sizeof(file_path), "%s/vpn_crt_server%d_%s", OPENVPN_UPLOAD_FLODER, unit, lists[i]);
 					if(check_if_file_exist(file_path)) {
 						eval("mv", "-f", file_path, JFFS_OPENVPN);
 					}
 				}
 				websWrite(stream, "<script>parent.callback_upload_cert(1);</script>\n");
-				notify_rc("restart_openvpnd");
+				snprintf(cmd, sizeof(cmd), "restart_vpnserver%d", unit);
+				notify_rc(cmd);
 				notify_rc("restart_chpass");
 			}
 			else {
