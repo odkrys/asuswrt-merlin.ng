@@ -1,8 +1,37 @@
 Asuswrt-Merlin 384/NG Changelog
 ===============================
-384.8_2 (xx-xxx-xxxx)
+
+384.9 (xx-xxx-xxxx)
+  - NEW: RT-AX88U - Merged with GPL 384_5247.
+  - CHANGED: Updated wget to 1.20.
+  - CHANGED: Updated nano to 3.2.
+  - CHANGED: Updated curl to 7.62.0.
+  - FIXED: Firmware update checks would not run at boot time
+           on the RT-AX88U.
+  - FIXED: Name resolution for /etc/hosts entries on HND
+           models (themiron)
+  - FIXED: Syslog not properly copied to JFFS on reboot
+           (John Bacho)
+  - FIXED: Volumes not properly unmounted on HND platform
+           (John Bacho)
+  - FIXED: Added missing TEE Netfilter target on the RT-AC86U
+  - FIXED: SSH brute force protection didn't work in Dual WAN
+           load balancing mode.
+
+
+384.8_2 (8-Dec-2018)
+  - CHANGED: Updated miniupnpd to 20181205.
+  - CHANGED: Push LAN domain to OpenVPN clients as DNS suffix
+             for the connection.
   - FIXED: Cannot save custom settings on OpenVPN server page
            on non-HND models.
+  - FIXED: Some webui pages fail to load properly in French
+  - FIXED: dnsmasq fails to start when certain options are
+           configured (themiron)
+  - FIXED: Non-functionnal Show Password option on OpenVPN/PPTP
+           server page for RT-AX88U (removed)
+  - FIXED: Persistent SSL cert was wiped at boot time in
+           some specific scenarios.
 
 
 384.8 (2-Dec-2018)
