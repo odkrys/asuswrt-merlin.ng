@@ -221,6 +221,10 @@ struct language_table language_tables[] = {
 // HACK: fix linker error when AMAS=n
 #ifndef RTCONFIG_AMAS
 struct AiMesh_whitelist AiMesh_whitelists[];
+int get_amas_info(struct json_object *json_object_ptr)
+{
+	return -1;
+}	
 #endif
 
 /* Forwards. */
