@@ -20,3 +20,4 @@ ogg.pc
 src/Makefile
 src/test_bitwise
 src/test_framing
+autom4te.cache/

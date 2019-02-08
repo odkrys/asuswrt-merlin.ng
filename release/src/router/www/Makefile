@@ -355,11 +355,11 @@ ifeq ($(RTCONFIG_OPENVPN), y)
 	cd $(INSTALLDIR)/www && ln -sf ../etc/openvpn/server2/client.ovpn client2.ovpn && cd $(TOP)/www
 else
 	rm -rf $(INSTALLDIR)/www/ajax_openvpn_server.asp
+endif
 ifneq ($(RTCONFIG_ACCEL_PPTPD), y)
 	rm -rf $(INSTALLDIR)/www/images/New_ui/vpnstatus.png
 	rm -rf $(INSTALLDIR)/www/Advanced_VPN_PPTP.asp
 	rm -rf $(INSTALLDIR)/www/ajax_vpnserver_client_status.xml
-endif
 endif
 ifneq ($(RTCONFIG_VPNC), y)
 	rm -rf $(INSTALLDIR)/www/Advanced_VPNClient_Content.asp

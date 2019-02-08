@@ -392,73 +392,6 @@ function generate_cpu_field(){
 	else
 		document.getElementById('cpu_field').innerHTML = code;
 }
-
-function get_ethernet_ports() {
-	$.ajax({
-		url: '/ajax_ethernet_ports.asp',
-		async: false,
-		dataType: 'script',
-		error: function(xhr) {
-			setTimeout("get_ethernet_ports();", 1000);
-		},
-		success: function(response) {
-			var wanLanStatus = get_wan_lan_status["portSpeed"];
-			var wanCount = get_wan_lan_status["portCount"]["wanCount"];
-			//parse nvram to array
-			var parseStrToArray = function(_array) {
-				var speedMapping = new Array();
-				speedMapping["M"] = "100 Mbps";
-				speedMapping["G"] = "1 Gbps";
-				speedMapping["X"] = "Unplugged"; /*untranslated*/
-				var parseArray = [];
-				for (var prop in _array) {
-					if (_array.hasOwnProperty(prop)) {
-						var newRuleArray = new Array();
-						var port_name = prop;
-						if(wanCount != undefined) {
-							if(port_name.substr(0, 3) == "WAN") {
-								if(parseInt(wanCount) > 1) {
-									var port_idx = port_name.split(" ");
-									port_name = port_idx[0] + " " + (parseInt(port_idx[1]) + 1);
-								}
-								else {
-									port_name = "WAN";
-								}
-							}
-						}
-						newRuleArray.push(port_name);
-						newRuleArray.push(speedMapping[_array[prop]]);
-						parseArray.push(newRuleArray);
-					}
-				}
-				return parseArray;
-			};
-
-			//set table Struct
-			var tableStruct = {
-				data: parseStrToArray(wanLanStatus),
-				container: "tableContainer",
-				header: [ 
-					{
-						"title" : "<#Status_Ports#>",
-						"width" : "50%"
-					},
-					{
-						"title" : "<#Status_Str#>",
-						"width" : "50%"
-					}
-				]
-			}
-
-			if(tableStruct.data.length) {
-				$("#tr_ethernet_ports").css("display", "");
-				tableApi.genTableAPI(tableStruct);
-			}
-
-			setTimeout("get_ethernet_ports();", 3000);
-		}
-	});
-}
 </script>
 </head>
 <body class="statusbody" onload="initial();">
@@ -645,30 +578,6 @@ function get_ethernet_ports() {
 				</td>
 			</tr>
 			
-			</table>
-		</div>
-	</td>
-</tr>
-<tr id="tr_ethernet_ports" style="display:none;">
-	<td> 
-		<div>
-			<table width="96%" border="1" align="center" cellpadding="4" cellspacing="0" class="table1px" style="margin: 0px 8px;">	
-				<tr>
-					<td style="border-bottom:5px #2A3539 solid;padding:0px 10px 5px 10px;"></td>
-				</tr>
-				<tr>
-					<td>
-						<div class="title"><#Status_Ethernet_Ports#></div>
-						<div style="margin-top: 5px;*margin-top:-70px;" class="line_horizontal"></div>
-					</td>
-				</tr>
-				<tr>
-					<td>
-						<div style="overflow-x:hidden;height:190px;">
-							<div id="tableContainer" style="margin-top:-10px;"></div>
-						</div>
-					</td>
-				</tr>
 			</table>
 		</div>
 	</td>

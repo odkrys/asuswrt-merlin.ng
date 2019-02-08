@@ -51,4 +51,32 @@ opensource/net/enet/impl5/bcm_enet.mod.c
 opensource/net/wfd/bcm94908
 opensource/net/wfd/impl1/wfd.mod.c
 
+broadcom/net/wl/impl51/dhd/src/shared/rtecdc_router.h
+broadcom/net/wl/impl51/main/components/apps/visualization/datacollector/vis-datacollector
+broadcom/net/wl/impl51/main/components/apps/visualization/dataconcentrator/vis-dcon
+broadcom/net/wl/impl51/main/components/apps/visualization/installbin/bin/vis-datacollector
+broadcom/net/wl/impl51/main/components/apps/visualization/installbin/bin/vis-dcon
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/.libs/
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/Makefile
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/Makefile.in
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/aclocal.m4
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/autom4te.cache/
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/compile
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/config.guess
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/config.log
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/config.status
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/config.sub
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/configure
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/depcomp
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/install-sh
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/libsqlite3.la
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/libtool
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/ltmain.sh
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/missing
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/sqlite3
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/sqlite3.lo
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/sqlite3.pc
+broadcom/net/wl/impl51/main/components/opensource/sqlite3/stamp-h1
+opensource/char/plat-bcm/impl1/bcm_thermal.mod.c
+
 nothing added to commit but untracked files present (use "git add" to track)

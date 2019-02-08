@@ -1,3 +1,5 @@
 *.so
 *.o
+.openvpn_config.depend
+.openvpn_control.depend
 

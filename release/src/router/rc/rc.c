@@ -1996,3 +1996,15 @@ int main(int argc, char **argv)
 	printf("Unknown applet: %s\n", base);
 	return 0;
 }
+
+// HACK: fix linker error when CFGSYNC=n, LIBASUSLOG=n
+#ifndef RTCONFIG_LIBASUSLOG
+int asusdebuglog(int level, char *path, int conlog, int showtime, unsigned filesize, const char *msgfmt, ...)
+{
+	return -1;
+}
+int rm_asusdebuglog(char *path)
+{
+	return -1;
+}
+#endif

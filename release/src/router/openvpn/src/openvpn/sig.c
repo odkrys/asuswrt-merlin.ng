@@ -297,11 +297,11 @@ print_status(const struct context *c, struct status_output *so)
 
     status_printf(so, "OpenVPN STATISTICS");
     status_printf(so, "Updated,%s", time_string(0, 0, false, &gc));
-    status_printf(so, "TUN/TAP read bytes," counter_format, c->c2.tun_read_bytes);
-    status_printf(so, "TUN/TAP write bytes," counter_format, c->c2.tun_write_bytes);
-    status_printf(so, "TCP/UDP read bytes," counter_format, c->c2.link_read_bytes);
-    status_printf(so, "TCP/UDP write bytes," counter_format, c->c2.link_write_bytes);
-    status_printf(so, "Auth read bytes," counter_format, c->c2.link_read_bytes_auth);
+    status_printf(so, "TUN/TAP read Mbytes," counter_format, (c->c2.tun_read_bytes/1048576));
+    status_printf(so, "TUN/TAP write Mbytes," counter_format, (c->c2.tun_write_bytes/1048576));
+    status_printf(so, "TCP/UDP read Mbytes," counter_format, (c->c2.link_read_bytes/1048576));
+    status_printf(so, "TCP/UDP write Mbytes," counter_format, (c->c2.link_write_bytes/1048576));
+    status_printf(so, "Auth read Mbytes," counter_format, (c->c2.link_read_bytes_auth/1048576));
 #ifdef USE_COMP
     if (c->c2.comp_context)
     {

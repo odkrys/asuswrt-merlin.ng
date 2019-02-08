@@ -963,8 +963,8 @@ function change_nat(state) {
 										<option value="dhcp" <% nvram_match("wan_proto", "dhcp", "selected"); %>><#BOP_ctype_title1#></option>
 										<option value="static" <% nvram_match("wan_proto", "static", "selected"); %>><#BOP_ctype_title5#></option>
 										<option value="pppoe" <% nvram_match("wan_proto", "pppoe", "selected"); %>>PPPoE</option>
-										<option value="pptp" <% nvram_match("wan_proto", "pptp", "selected"); %>>PPTP</option>
-										<option value="l2tp" <% nvram_match("wan_proto", "l2tp", "selected"); %>>L2TP</option>										
+//										<option value="pptp" <% nvram_match("wan_proto", "pptp", "selected"); %>>PPTP</option>
+//										<option value="l2tp" <% nvram_match("wan_proto", "l2tp", "selected"); %>>L2TP</option>										
 									</select>
 								</td>
 							</tr>

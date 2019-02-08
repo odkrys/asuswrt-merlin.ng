@@ -6,5 +6,7 @@ config.h
 doc/sample.nanorc
 src/.deps
 po/Makefile.in
+po/Makevars.template
 po/POTFILES
 autom4te.cache
+lib/
