@@ -186,6 +186,12 @@ static void do_jffsupload_post(char *url, FILE *stream, int len, char *boundary)
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
+#include <openssl/opensslconf.h>
+#include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#define X509_getm_notBefore X509_get_notBefore
+#define X509_getm_notAfter X509_get_notAfter
+#endif
 #ifdef RTCONFIG_LETSENCRYPT
 #include <letsencrypt_config.h>
 #endif
@@ -22526,11 +22532,9 @@ ej_httpd_cert_info(int eid, webs_t wp, int argc, char **argv)
 	_get_common_name(buf, issuer, sizeof(issuer));
 	X509_NAME_oneline(X509_get_subject_name(x509data), buf, sizeof(buf));
 	_get_common_name(buf, subject, sizeof(subject));
-	//strptime(x509data->cert_info->validity->notBefore->data, "%y%m%d%H%M%SZ", &tm, NULL);
-	ASN1_TimeToTM(x509data->cert_info->validity->notBefore, &tm);
+	ASN1_TimeToTM(X509_getm_notBefore(x509data), &tm);
 	snprintf(notBefore, sizeof(notBefore), "%d/%d/%d", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday);
-	//strptime(x509data->cert_info->validity->notAfter->data, "%y%m%d%H%M%SZ", &tm, NULL);
-	ASN1_TimeToTM(x509data->cert_info->validity->notAfter, &tm);
+	ASN1_TimeToTM(X509_getm_notAfter(x509data), &tm);
 	snprintf(notAfter, sizeof(notAfter), "%d/%d/%d", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday);
 
 	websWrite(wp, "{");
@@ -23123,7 +23127,9 @@ struct ej_handler ej_handlers[] = {
 	{ "iptmon", ej_iptmon},
 	{ "ipt_bandwidth", ej_ipt_bandwidth},
 #endif
-
+#ifdef RTCONFIG_BWDPI
+	{ "bwdpi_conntrack", ej_bwdpi_conntrack},
+#endif
 	{ "bandwidth", ej_bandwidth},
 #ifdef RTCONFIG_DSL
 	{ "spectrum", ej_spectrum}, //Ren
@@ -23789,11 +23795,13 @@ do_jffsupload_cgi(char *url, FILE *stream)
 				shutdown(fileno(stream), SHUT_RDWR);
 		} else {
 			logmessage("httpd", "Error while restoring JFFS backup - no change made");
+			unlink(JFFS_BACKUP_FILE);
 		}
 	}
 	else
 	{
 		websApply(stream, "UploadError.asp");
+		unlink(JFFS_BACKUP_FILE);
 	}
 }
 
@@ -23801,31 +23809,30 @@ static void
 do_jffsupload_post(char *url, FILE *stream, int len, char *boundary)
 {
 	FILE *fifo = NULL;
-	char buf[1024];
 	int count, ret = EINVAL, ch;
 	long filelen = 0;
 
 	/* Look for our part */
 	while (len > 0) {
-		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream)) {
+		if (!fgets(post_buf, MIN(len + 1, sizeof(post_buf)), stream)) {
 			goto err;
 		}
 
-		len -= strlen(buf);
+		len -= strlen(post_buf);
 
-		if (!strncasecmp(buf, "Content-Disposition:", 20)
-				&& strstr(buf, "name=\"file2\""))
+		if (!strncasecmp(post_buf, "Content-Disposition:", 20)
+				&& strstr(post_buf, "name=\"file2\""))
 			break;
 	}
 
 	/* Skip boundary and headers */
 	while (len > 0) {
-		if (!fgets(buf, MIN(len + 1, sizeof(buf)), stream)) {
+		if (!fgets(post_buf, MIN(len + 1, sizeof(post_buf)), stream)) {
 			goto err;
 		}
 
-		len -= strlen(buf);
-		if (!strcmp(buf, "\n") || !strcmp(buf, "\r\n")) {
+		len -= strlen(post_buf);
+		if (!strcmp(post_buf, "\n") || !strcmp(post_buf, "\r\n")) {
 			break;
 		}
 	}
@@ -23834,15 +23841,16 @@ do_jffsupload_post(char *url, FILE *stream, int len, char *boundary)
 		goto err;
 
 	while (len > 0) {
-		count = fread(buf, 1, MIN(len, sizeof(buf)), stream);
+		count = fread(post_buf, 1, MIN(len, sizeof(post_buf)), stream);
 		if(count <= 0)
 			goto err;
 
 		len -= count;
 		filelen += count;
-		fwrite(buf, 1, count, fifo);
+		fwrite(post_buf, 1, count, fifo);
 	}
 
+	ret = 0;
 	fclose(fifo);
 	fifo = NULL;
 

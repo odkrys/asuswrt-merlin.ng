@@ -157,39 +157,22 @@ switch (openvpn_unit) {
 
 enforce_ori = "<% nvram_get("vpn_client_enforce"); %>";
 policy_ori = "<% nvram_get("vpn_client_rgw"); %>";
+dnsmode_ori = "<% nvram_get("vpn_client_adns"); %>";
 
 ciphersarray = [
 		["AES-128-CBC"],
-		["AES-128-CFB"],
-		["AES-128-OFB"],
 		["AES-192-CBC"],
-		["AES-192-CFB"],
-		["AES-192-OFB"],
 		["AES-256-CBC"],
-		["AES-256-CFB"],
-		["AES-256-OFB"],
 		["AES-128-GCM"],
 		["AES-192-GCM"],
 		["AES-256-GCM"],
 		["BF-CBC"],
-		["BF-CFB"],
-		["BF-OFB"],
 		["CAST5-CBC"],
-		["CAST5-CFB"],
-		["CAST5-OFB"],
 		["DES-CBC"],
-		["DES-CFB"],
 		["DES-EDE3-CBC"],
-		["DES-EDE3-CFB"],
-		["DES-EDE3-OFB"],
 		["DES-EDE-CBC"],
-		["DES-EDE-CFB"],
-		["DES-EDE-OFB"],
-		["DES-OFB"],
 		["DESX-CBC"],
-		["IDEA-CBC"],
-		["IDEA-CFB"],
-		["IDEA-OFB"]
+		["IDEA-CBC"]
 ];
 
 var digestsarray = [
@@ -619,6 +602,9 @@ function applyRule(manual_switch){
 	     (policy_ori != document.form.vpn_client_rgw.value)) &&
 	    (client_state == 0) && (manual_switch == 0))
 		document.form.action_script.value += "start_vpnrouting"+openvpn_unit;
+
+	if ((dnsmode_ori != document.form.vpn_client_adns.value) && (client_state != 0))
+		document.form.action_script.value += ";restart_dnsmasq"
 
 	document.form.submit();
 }

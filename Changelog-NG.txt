@@ -1,27 +1,106 @@
 Asuswrt-Merlin 384/NG Changelog
 ===============================
 
-384.9 (xx-xxx-xxxx)
-  - NEW: TemporarilY reorganized code in separate branches, to handle
+384.10 (xx-xxx-2019)
+  - NEW: Added OpenSSL 1.1.1a in parallel to 1.0.2.  Some services
+         are still linked against 1.0.2 because only Asus can
+         recompile these (like AiCloud).
+
+         Services that currently use OpenSSL 1.1.1:
+         httpd (webui), OpenVPN, wget, net-snmp,
+         Tor, Strongswan (IPSEC server), inadyn, vsftpd.
+
+         Note that 1.1.x is slightly slower than 1.0.2, however
+         some services can benefit from the TLS 1.3 support (faster
+         connection estalishing).
+
+         Models that lack AES acceleration will priorize the use
+         of CHACHA20 over AES-256-GCM, for a small performance
+         improvement (for instance with the webui).
+
+         Note that OpenVPN 2.4.7's support is still limited.
+         TLS 1.3 should be supported, but CHACHA20 support is
+         only expected with OpenVPN 2.5.0.
+
+         The 1.0.2 userspace tool is still named "openssl", while
+         the 1.1.x version is named "openssl11".
+
+  - CHANGED: Some firmware cleanups to regain flash space (for
+             use with the parallel OpeNSSL 1.1.x install)
+             (RMerlin, Themiron)
+  - CHANGED: Updated curl to 7.64.0.
+  - CHANGED: Updated OpenVPN to 2.4.7.
+  - CHANGED: Updated Tor to 0.3.5.8.
+  - CHANGED: Updated strongswan to 5.7.2.
+  - CHANGED: Updated OpenSSL 1.0.x to 1.0.2r.
+  - CHANGED: Updated dnsmasq to 2.81-g6799320.
+  - CHANGED: Removed CFB and OFB ciphers from OpenVPN client
+  - CHANGED: Limit Classification entries to 300 max, to prevent
+             major performance issues with many connections.
+  - CHANGED: Strongswan is no longer compiled 64-bit
+             on HND, allowing it to use a shared openssl library
+             instead of a static one.  This should significantly
+             reduce the memory usage of Strongswan as well as
+             flash usage.  (Themiron)
+  - FIXED: IPSEC log display wasn't properly formatted (showed
+                 entirely on a single line)
+  - FIXED: Compatibility issues between recent Tuxera NTFS driver
+           and Samba
+  - FIXED: NFSv2 support
+  - REMOVED: Beceem Wimax driver.  This is deprecated, and was
+             already removed from the HND models.  This allows
+             to reclaim close to 2 MB of flash space.
+
+
+384.9 (2-Feb-2019)
+  - NEW: Temporarily reorganized code in separate branches, to handle
          Asus's currently scattered firmware source code releases.
          The GPL situation for this release is as follow:
-     o RT-AX88U: Merged GPL 384_5247
-     o RT-AC68U, RT-AC86U: Merged GPL 384_45149
-     o RT-AC3200: GPL 384_45149 + updated binary blobs from Asus
-     o RT-AC88U, RT-AC3100, RT-AC5300: GPL 384_32799
+     o RT-AX88U: Merged GPL 384_5329
+     o Other models: Merged GPL 384_45149.
+     o Special binary blobs provided by Asus for the RT-AC87U
+       and RT-AC3200 (compatible with 384_45149).
 
   - NEW: Added NFS client support (V2 and V3) to the
          RT-AC86U and RT-AX88U (already present in older models)
+  - NEW: Report the number of spatial streams and the PHY type
+         used by wireless clients for models supporting it
+  - NEW: Display tracked connections on the QoS Stats page (now
+         relabeled "Classification").
+         Fields can be sorted by clicking on the column headers.
+         Thanks to FreshJr for his help in deciphering the packet
+         mark values.
+
+  - NEW: Implemented ipsec.postconf and strongswan.postconf scripts.
+  - KNOWN ISSUE: dcd process crashing on RT-AC86U (bug in Trend
+                 Micro's code, outside of my control).
+  - KNOWN ISSUE: IPv6s on Tracked Connections have their last
+                 two bytes set to 00 (bug in Trend Micro's
+                 code truncating the last two bytes).
+  - KNOWN ISSUE: No IPS events logged (bug in Asus's code,
+                 IPS should work, just fails to log hits)
+  - KNOWN ISSUE: Networkmap listing may be unreliable.
+                 (Bug in Asus's code)
+  - KNOWN ISSUE: Users failing to read changelogs will
+                 probably complain about the above issues.
+                 (Outside of my control).
   - CHANGED: Updated wget to 1.20.
   - CHANGED: Updated nano to 3.2.
   - CHANGED: Updated curl to 7.62.0.
   - CHANGED: Updated Chart.js to 2.7.3.
+  - CHANGED: Updated dnsmasq to 2.80-32-g28cfe36 (themiron)
   - CHANGED: Optimized some JS files to reduce their size
   - CHANGED: OpenVPN clients can now accept CNs up to 255 chars
              when using it to validate the certificate.
   - CHANGED: No longer reset the OpenVPN client's description,
              policy mode and existing rules when uploading an
              .ovpn config file.
+  - CHANGED: No longer accept any server-provided route
+             when OpenVPN client set to Policy (Strict).
+  - CHANGED: Clients bound to DNSFilter rules will no longer
+             bypass it by using DoT.  DNSFilter servers that
+             support DoT (like Quad9) will only allow filtered
+             clients to use that server
   - FIXED: Firmware update checks would not run at boot time
            on the RT-AX88U.
   - FIXED: Name resolution issues for /etc/hosts entries on
@@ -34,6 +113,13 @@ Asuswrt-Merlin 384/NG Changelog
   - FIXED: SSH brute force protection didn't work in Dual WAN
            load balancing mode.
   - FIXED: httpd crashes on RT-AC86U (themiron)
+  - FIXED: DNSFilter clients could use a different nameserver
+           when using an IPv6 connection
+  - FIXED: USB disk idle config changes not applying without a
+           reboot.
+  - FIXED: "Strict" DNS mode wasn't working properly with OpenVPN
+           clients
+  - FIXED: Cannot upload JFFS backup on HND models
 
 
 384.8_2 (8-Dec-2018)

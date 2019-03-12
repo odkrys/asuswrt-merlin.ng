@@ -100,7 +100,7 @@ define(function(){
 				tab: [
 					{url: "AdaptiveQoS_Bandwidth_Monitor.asp", tabName: "<#Bandwidth_monitor#>"},
 					{url: "QoS_EZQoS.asp", tabName: "<#menu5_3_2#>"},
-					{url: "QoS_Stats.asp", tabName: "QoS Statistics"},
+					{url: "QoS_Stats.asp", tabName: "Classification"},
 					{url: "AdaptiveQoS_WebHistory.asp", tabName: "<#Adaptive_History#>"},
 					{url: "AdaptiveQoS_ROG.asp", tabName: "<table style='margin-top:-7px;'><tr><td><img src='/images/ROG_Logo.png' style='border:0px;width:32px;'></td><td>ROG First</td></tr></table>"}, 
 					{url: "Main_Spectrum_Content.asp", tabName: "<#Spectrum_title#>"},
@@ -383,9 +383,6 @@ define(function(){
 				if(!rrsut_support)
 					retArray.push("cloud_router_sync.asp");
 
-				if(!amesh_support)
-					retArray.push("Advanced_Roaming_Block_Content.asp");
-
 				/* Operation Mode */
 				if(isSwMode("re")){
 					retArray.push("menu_GuestNetwork");
@@ -649,6 +646,9 @@ define(function(){
 //				if(!cooler_support){
 //					retArray.push("Advanced_PerformanceTuning_Content.asp");
 //				}
+
+				if(!amesh_support)
+					retArray.push("Advanced_Roaming_Block_Content.asp");
 
 				/* Operation Mode */
 				if(isSwMode("re")){
