@@ -539,10 +539,6 @@ function applyRule(){
 		else
 			document.form.dns_probe.value = "0";
 
-		showLoading();
-
-		var action_script_tmp = "restart_time;restart_upnp;";
-
 		if(restart_httpd_flag) {
 			action_script_tmp += "restart_httpd;";
 
