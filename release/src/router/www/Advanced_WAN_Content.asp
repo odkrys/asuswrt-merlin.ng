@@ -49,6 +49,7 @@ if(dualWAN_support && ( wans_dualwan.search("wan") >= 0 || wans_dualwan.search("
 }
 <% login_state_hook(); %>
 <% wan_get_parameter(); %>
+<% get_dot_presets(); %>
 
 var wan_proto_orig = '<% nvram_get("wan_proto"); %>';
 var original_wan_type = wan_proto_orig;
@@ -100,6 +101,7 @@ function initial(){
 	change_nat(<% nvram_get("wan_nat_x"); %>);
 
 	if(dnspriv_support){
+		build_dot_server_presets();
 		inputCtrl(document.form.dnspriv_enable, 1);
 		change_dnspriv_enable(document.form.dnspriv_enable.value);
 	}
@@ -884,6 +886,7 @@ function change_dnspriv_enable(flag){
 		inputCtrl(document.form.dnspriv_profile[1], 1);
 		document.getElementById("DNSPrivacy").style.display = "";
 		document.getElementById("dnspriv_rulelist_Block").style.display = "";
+		document.getElementById("dot_presets_tr").style.display = "";
 		show_dnspriv_rulelist();
 	}
 	else{
@@ -891,6 +894,7 @@ function change_dnspriv_enable(flag){
 		inputCtrl(document.form.dnspriv_profile[1], 0);
 		document.getElementById("DNSPrivacy").style.display = "none";
 		document.getElementById("dnspriv_rulelist_Block").style.display = "none";
+		document.getElementById("dot_presets_tr").style.display = "none";
 	}
 }
 
@@ -979,6 +983,25 @@ function show_dnspriv_rulelist(){
 	code +='</table>';
 	document.getElementById("dnspriv_rulelist_Block").innerHTML = code;
 }
+
+function build_dot_server_presets(){
+	free_options(document.form.dotPresets);
+	add_option(document.form.dotPresets, "<#Select_menu_default#>", 0, 1);
+	for(var i = 1; i < dot_servers_array.length; i++)
+		add_option(document.form.dotPresets, dot_servers_array[i][0], i, 0);
+
+}
+
+function change_wizard(o, id){
+	if (id == "dotPresets") {
+		var i = o.value;
+		document.form.dnspriv_server_0.value = dot_servers_array[i][1];
+		document.form.dnspriv_port_0.value = dot_servers_array[i][2];
+		document.form.dnspriv_hostname_0.value = dot_servers_array[i][3];
+		document.form.dnspriv_spkipin_0.value = dot_servers_array[i][4];
+	}
+}
+
 </script>
 </head>
 
@@ -1238,6 +1261,12 @@ function show_dnspriv_rulelist(){
 				<td>
 					<input type="radio" name="dnspriv_profile" class="input" value="1" onclick="return change_common_radio(this, 'IPConnection', 'dnspriv_profile', 1)" <% nvram_match("dnspriv_profile", "1", "checked"); %> />Strict
 					<input type="radio" name="dnspriv_profile" class="input" value="0" onclick="return change_common_radio(this, 'IPConnection', 'dnspriv_profile', 0)" <% nvram_match("dnspriv_profile", "0", "checked"); %> />Opportunistic
+				</td>
+			</tr>
+			<tr style="display:none" id="dot_presets_tr">
+				<th>Preset servers</th>
+				<td>
+					<select name="dotPresets" id="dotPresets" class="input_option" onchange="change_wizard(this, 'dotPresets');">
 				</td>
 			</tr>
         		</table>

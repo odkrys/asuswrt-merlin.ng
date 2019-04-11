@@ -23502,6 +23502,9 @@ struct ej_handler ej_handlers[] = {
 #endif
 	{ "get_sw_mode", ej_get_sw_mode},
 	{ "get_iptvSettings", ej_get_iptvSettings },
+#ifdef RTCONFIG_DNSPRIVACY
+	{ "get_dot_presets", ej_get_dot_presets },
+#endif
 	{ NULL, NULL }
 };
 
@@ -23874,3 +23877,42 @@ err:
 	fcntl(fileno(stream), F_SETOWN, -ret);
 }
 #endif // (defined(RTCONFIG_JFFS2) || defined(RTCONFIG_BRCM_NAND_JFFS2)
+
+#ifdef RTCONFIG_DNSPRIVACY
+int
+ej_get_dot_presets(int eid, webs_t wp, int argc, char_t **argv)
+{
+	int ret=0;
+	FILE *fp;
+	char line[256];
+	char *item;
+
+	ret += websWrite(wp, "var dot_servers_array = [");
+
+	if (!(fp = fopen("/rom/dot-servers", "r"))) {
+		ret += websWrite(wp, "];\n");
+		return ret;
+	}
+
+	while (fgets(line, sizeof(line), fp) != NULL) {
+		if (line[0] == '#' || line[0] == ' ')
+			continue;
+
+		item = strtok(line, ",");
+
+		while (item != NULL) {
+			ret += websWrite(wp, "\"%s\"", item);
+			item = strtok(NULL, ",");
+			if (item)
+				ret += websWrite(wp, ",");
+		}
+		ret += websWrite(wp, "],\n");
+	}
+
+	fclose(fp);
+	ret += websWrite(wp, "];\n");
+
+	return ret;
+}
+#endif
+
