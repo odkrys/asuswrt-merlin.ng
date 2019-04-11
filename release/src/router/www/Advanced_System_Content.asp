@@ -499,6 +499,16 @@ function applyRule(){
 			updateDateTime();
 		}
 
+		if(document.form.wandog_enable_chk.checked)
+			document.form.wandog_enable.value = "1";
+		else
+			document.form.wandog_enable.value = "0";
+
+		if(document.form.dns_probe_chk.checked)
+			document.form.dns_probe.value = "1";
+		else
+			document.form.dns_probe.value = "0";
+
 		showLoading();
 
 		var action_script_tmp = "restart_time;restart_upnp;restart_leds;";
@@ -528,16 +538,6 @@ function applyRule(){
 
 			action_script_tmp += "restart_usb_idle;";
 		}
-
-		if(document.form.wandog_enable_chk.checked)
-			document.form.wandog_enable.value = "1";
-		else
-			document.form.wandog_enable.value = "0";
-
-		if(document.form.dns_probe_chk.checked)
-			document.form.dns_probe.value = "1";
-		else
-			document.form.dns_probe.value = "0";
 
 		if(restart_httpd_flag) {
 			action_script_tmp += "restart_httpd;";
@@ -1957,6 +1957,12 @@ function pullPingTargetList(obj){
 						</div>
 					</td>
 				</tr>
+				<tr>
+					<th>Secondary NTP Server</th>
+					<td>
+						<input type="text" maxlength="31" class="input_32_table" name="ntp_server1" value="<% nvram_get("ntp_server1"); %>" onKeyPress="return validator.isString(this, event);" autocorrect="off" autocapitalize="off">
+					</td>
+				</tr>
 				<tr id="network_monitor_tr">
 					<th><#Network_Monitoring#></th>
 					<td>
@@ -1982,12 +1988,6 @@ function pullPingTargetList(obj){
 							<input type="text" class="input_32_table" name="wandog_target" maxlength="100" value="<% nvram_get("wandog_target"); %>" placeholder="ex: www.google.com" autocorrect="off" autocapitalize="off">
 							<img id="ping_pull_arrow" class="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullPingTargetList(this);" title="<#select_network_host#>">
 							<div id="TargetList_Block_PC" name="TargetList_Block_PC" class="clientlist_dropdown" style="margin-left: 2px; width: 348px;display: none;"></div>
-					</td>
-				</tr>
-				<tr>
-					<th>Secondary NTP Server</th>
-					<td>
-						<input type="text" maxlength="31" class="input_32_table" name="ntp_server1" value="<% nvram_get("ntp_server1"); %>" onKeyPress="return validator.isString(this, event);" autocorrect="off" autocapitalize="off">
 					</td>
 				</tr>
 				<tr>
