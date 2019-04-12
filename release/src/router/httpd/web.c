@@ -23882,12 +23882,12 @@ err:
 int
 ej_get_dot_presets(int eid, webs_t wp, int argc, char_t **argv)
 {
-	int ret=0;
+	int ret, len;
 	FILE *fp;
 	char line[256];
-	char *item;
+	char *item, *buf;
 
-	ret += websWrite(wp, "var dot_servers_array = [");
+	ret = websWrite(wp, "var dot_servers_array = [");
 
 	if (!(fp = fopen("/rom/dot-servers", "r"))) {
 		ret += websWrite(wp, "];\n");
@@ -23895,18 +23895,26 @@ ej_get_dot_presets(int eid, webs_t wp, int argc, char_t **argv)
 	}
 
 	while (fgets(line, sizeof(line), fp) != NULL) {
-		if (line[0] == '#' || line[0] == ' ')
+		len = strlen(line);
+		if (len == 0 || line[0] == '#' || line[0] == '\n')
 			continue;
 
-		item = strtok(line, ",");
+		if (line[len-1] == '\n')
+			line[len-1] = '\0';
 
+		buf = strdup(line);
+		item = strsep(&buf, ",");
+
+		ret += websWrite(wp, "[");
 		while (item != NULL) {
 			ret += websWrite(wp, "\"%s\"", item);
-			item = strtok(NULL, ",");
+			item = strsep(&buf, ",");
+
 			if (item)
 				ret += websWrite(wp, ",");
 		}
 		ret += websWrite(wp, "],\n");
+		free(buf);
 	}
 
 	fclose(fp);
