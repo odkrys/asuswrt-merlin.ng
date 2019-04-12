@@ -1,0 +1,20 @@
+# Layout:
+# Name,IP_Address,Port,TLS_Hostname,SPKI
+# Single entry = group label
+# Empty lines are ignored
+
+IPv4 (test servers)
+getdnsapi.net,185.49.141.37,,getdnsapi.net,foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9Q=
+
+IPv4
+Cloudflare 1.1.1.1,1.1.1.1,,cloudflare-dns.com,
+Cloudflare 1.0.0.1,1.0.0.1,,cloudflare-dns.com,
+Google 8.8.8.8,8.8.8.8,,dns.google,
+Google 8.8.4.4,8.8.4.4,,dns.google,
+Quad9 (secure),9.9.9.9,dns.quad9.net,
+Quad9 (insecure),9.9.9.10,dns.quad9.net,
+
+IPv6
+Neutopia,89.234.186.112,443,dns.neutopia.org,wTeXHM8aczvhRSi0cv2qOXkXInoDU+2C+M8MpRyT3OI=
+IPv6:Cloudflare 1111,2606:4700:4700::1111,,cloudflare-dns.com,
+IPv6:Cloudflare 1001,2606:4700:4700::1001,,cloudflare-dns.com,
