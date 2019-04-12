@@ -910,16 +910,19 @@ function addRow(obj, head){
 
 function addRow_Group(upper){
 	var rule_num = document.getElementById('dnspriv_rulelist_table').rows.length;
-	var item_num = document.getElementById('dnspriv_rulelist_table').rows[0].cells.length;		
+	var item_num = document.getElementById('dnspriv_rulelist_table').rows[0].cells.length;
+
+	document.getElementById("dotPresets").selectedIndex = 0;
+
 	if(rule_num >= upper){
 		alert("<#JS_itemlimit1#> " + upper + " <#JS_itemlimit2#>");
-		return false;	
-	}	
+		return false;
+	}
 
 	if(document.form.dnspriv_server_0.value==""){
 		alert("<#JS_fieldblank#>");
 		document.form.dnspriv_server_0.focus();
-		document.form.dnspriv_server_0.select();		
+		document.form.dnspriv_server_0.select();
 		return false;
 	}
 	else{
@@ -931,9 +934,9 @@ function addRow_Group(upper){
 	}
 }
 
-function edit_Row(r){ 	
+function edit_Row(r){
 	var i=r.parentNode.parentNode.rowIndex;
-  	document.form.dnspriv_server_0.value = document.getElementById('dnspriv_rulelist_table').rows[i].cells[0].innerHTML;
+	document.form.dnspriv_server_0.value = document.getElementById('dnspriv_rulelist_table').rows[i].cells[0].innerHTML;
 	document.form.dnspriv_port_0.value = document.getElementById('dnspriv_rulelist_table').rows[i].cells[1].innerHTML; 
 	document.form.dnspriv_hostname_0.value = document.getElementById('dnspriv_rulelist_table').rows[i].cells[2].innerHTML; 
 	document.form.dnspriv_spkipin_0.value = document.getElementById('dnspriv_rulelist_table').rows[i].cells[3].innerHTML;
@@ -985,11 +988,27 @@ function show_dnspriv_rulelist(){
 }
 
 function build_dot_server_presets(){
+	var optGroup = "", opt;
+
 	free_options(document.form.dotPresets);
 	add_option(document.form.dotPresets, "<#Select_menu_default#>", 0, 1);
-	for(var i = 1; i < dot_servers_array.length; i++)
-		add_option(document.form.dotPresets, dot_servers_array[i][0], i, 0);
 
+	for(var i = 0; i < dot_servers_array.length; i++) {
+		if (dot_servers_array[i].length == 1) {
+			if (optGroup != "")	// Close existing group
+				document.form.dotPresets.appendChild(optGroup);
+			optGroup = document.createElement('optgroup');
+			optGroup.label = dot_servers_array[i][0];
+		} else {
+			if (optGroup == "")
+				optGroup = document.createElement('optgroup');	// No group was initialized, so do one
+			opt = document.createElement('option');
+			opt.innerHTML = dot_servers_array[i][0];
+			opt.value = i;
+			optGroup.appendChild(opt);
+		}
+	}
+	if (optGroup != "") document.form.dotPresets.appendChild(optGroup);
 }
 
 function change_wizard(o, id){
