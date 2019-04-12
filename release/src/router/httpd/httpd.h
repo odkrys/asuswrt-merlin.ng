@@ -378,7 +378,7 @@ extern char* reverse_str( char *str );
 extern int check_AiMesh_whitelist(char *page);
 #endif
 #ifdef RTCONFIG_DNSPRIVACY
-extern int ej_get_dot_presets(int eid, webs_t wp, int argc, char_t **argv);
+extern int ej_get_dnsprivacy_presets(int eid, webs_t wp, int argc, char_t **argv);
 #endif
 
 /* web-*.c */

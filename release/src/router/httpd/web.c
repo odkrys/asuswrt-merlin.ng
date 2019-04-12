@@ -23503,7 +23503,7 @@ struct ej_handler ej_handlers[] = {
 	{ "get_sw_mode", ej_get_sw_mode},
 	{ "get_iptvSettings", ej_get_iptvSettings },
 #ifdef RTCONFIG_DNSPRIVACY
-	{ "get_dot_presets", ej_get_dot_presets },
+	{ "get_dnsprivacy_presets", ej_get_dnsprivacy_presets },
 #endif
 	{ NULL, NULL }
 };
@@ -23880,16 +23880,29 @@ err:
 
 #ifdef RTCONFIG_DNSPRIVACY
 int
-ej_get_dot_presets(int eid, webs_t wp, int argc, char_t **argv)
+ej_get_dnsprivacy_presets(int eid, webs_t wp, int argc, char_t **argv)
 {
 	int ret, len;
 	FILE *fp;
 	char line[256];
-	char *item, *buf;
+	char *item, *buf, *type, *typeString, *datafile;
 
-	ret = websWrite(wp, "var dot_servers_array = [");
+	if (ejArgs(argc, argv, "%s", &type) < 1) {
+		websError(wp, 400, "Insufficient args\n");
+		return -1;
+	}
 
-	if (!(fp = fopen("/rom/dot-servers", "r"))) {
+	if (!strcmp(type, "dot")) {
+		typeString = "dot";
+		datafile = "/rom/dot-servers.dat";
+	} else {
+		websError(wp, 400, "Invalid argument\n");
+		return -1;
+	}
+
+	ret = websWrite(wp, "var %s_servers_array = [", typeString);
+
+	if (!(fp = fopen(datafile, "r"))) {
 		ret += websWrite(wp, "];\n");
 		return ret;
 	}

@@ -49,7 +49,7 @@ if(dualWAN_support && ( wans_dualwan.search("wan") >= 0 || wans_dualwan.search("
 }
 <% login_state_hook(); %>
 <% wan_get_parameter(); %>
-<% get_dot_presets(); %>
+<% get_dnsprivacy_presets("dot"); %>
 
 var wan_proto_orig = '<% nvram_get("wan_proto"); %>';
 var original_wan_type = wan_proto_orig;

@@ -1,8 +1,0 @@
-# Name,IP address, Port,TLS Hostname, SPKI
-Cloudflare 1,1.1.1.1,853,cloudflare-dns.com,
-Cloudflare 2,1.0.0.1,853,cloudflare-dns.com,
-Google 1,8.8.8.8,853,dns.google,
-Google 2,8.8.4.4,853,dns.google,
-Neutopia (port 443),89.234.186.112,443,dns.neutopia.org,wTeXHM8aczvhRSi0cv2qOXkXInoDU+2C+M8MpRyT3OI=
-IPv6:Cloudflare 1,2606:4700:4700::1111,853,cloudflare-dns.com,
-IPv6:Cloudflare 2,2606:4700:4700::1001,853,cloudflare-dns.com,

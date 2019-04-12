@@ -290,5 +290,5 @@ ifeq ($(HND_ROUTER),y)
 endif
 
 ifeq ($(RTCONFIG_DNSPRIVACY),y)
-	install -m 0644 dot-servers $(INSTALLDIR)/rom/dot-servers
+	install -m 0644 dot-servers.dat $(INSTALLDIR)/rom/dot-servers.dat
 endif
