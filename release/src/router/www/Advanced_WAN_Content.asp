@@ -1350,8 +1350,7 @@ function change_wizard(o, id){
 			</table>
 
 			<table id="DNSPrivacy" width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable_table" style="display:none">
-			<thead>
-				<tr>
+			<thead>				<tr>
 					<td colspan="5">DNS-over-TLS Server List (Max Limit : 8)</td>
 				</tr>
 			</thead>
