@@ -112,8 +112,8 @@ var sortCol, sortMethod;
 
 function initial(){
 	show_menu();
-	//id="faq" href="https://www.asus.com/US/support/FAQ/1000906"
-	httpApi.faqURL("1000906", function(url){document.getElementById("faq").href=url;});
+	//id="faq" href="https://www.asus.com/US/support/FAQ/1036677"
+	httpApi.faqURL("1036677", function(url){document.getElementById("faq").href=url;});
 	//Viz 2011.10{ for LAN ip in DHCP pool or Static list
 	showtext(document.getElementById("LANIP"), '<% nvram_get("lan_ipaddr"); %>');
 	if((inet_network(document.form.lan_ipaddr.value)>=inet_network(document.form.dhcp_start.value))&&(inet_network(document.form.lan_ipaddr.value)<=inet_network(document.form.dhcp_end.value))){
@@ -202,7 +202,7 @@ function addRow_Group(upper){
 		document.form.dhcp_staticname_x_0.focus();
 		document.form.dhcp_staticname_x_0.select();
 		return false;
-	}else if(check_macaddr(document.form.dhcp_staticmac_x_0, check_hwaddr_flag(document.form.dhcp_staticmac_x_0)) == true &&
+	}else if(check_macaddr(document.form.dhcp_staticmac_x_0, check_hwaddr_flag(document.form.dhcp_staticmac_x_0, 'inner')) == true &&
 		 validator.validIPForm(document.form.dhcp_staticip_x_0,0) == true &&
 		 validate_dhcp_range(document.form.dhcp_staticip_x_0) == true){
 
@@ -1024,13 +1024,6 @@ function parse_vpnc_dev_policy_list(_oriNvram) {
                                   <input type="radio" value="0" name="dhcpd_dns_router" class="content_input_fd" onClick="return change_common_radio(this, 'LANHostConfig', 'dhcpd_dns_router', '0')" <% nvram_match("dhcpd_dns_router", "0", "checked"); %>><#checkbox_No#>
                                 </td>
                           </tr>
-			  <tr>
-				<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(50,5);">Forward local domain queries to upstream DNS</a></th>
-				<td colspan="2" style="text-align:left;">
-					<input type="radio" value="1" name="lan_dns_fwd_local"  onclick="return change_common_radio(this, 'LANHostConfig', 'lan_dns_fwd_local', '1')" <% nvram_match("lan_dns_fwd_local", "1", "checked"); %> /><#checkbox_Yes#>
-					<input type="radio" value="0" name="lan_dns_fwd_local"  onclick="return change_common_radio(this, 'LANHostConfig', 'lan_dns_fwd_local', '0')" <% nvram_match("lan_dns_fwd_local", "0", "checked"); %> /><#checkbox_No#>
-				</td>
-			  </tr>
 			  <tr>
 				<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(5,8);"><#LANHostConfig_x_WINSServer_itemname#></a></th>
 				<td>

@@ -626,7 +626,7 @@ void update_wan_state(char *prefix, int state, int reason)
 	}
         else if (state == WAN_STATE_CONNECTED) {
 		sprintf(tmp,"%c",prefix[3]);
-                run_custom_script("wan-start", tmp);
+                run_custom_script("wan-start", 0, tmp, NULL);
         }
 
 #if defined(RTCONFIG_WANRED_LED)
@@ -2076,10 +2076,10 @@ int update_resolvconf(void)
 			if (!*wan_dns && !*wan_xdns)
 				continue;
 
-#ifdef NORESOLV /* dnsmasq uses no resolv.conf */
 			foreach(tmp, (*wan_dns ? wan_dns : wan_xdns), next)
 				fprintf(fp, "nameserver %s\n", tmp);
 
+#ifdef NORESOLV /* dnsmasq uses no resolv.conf */
 			do {
 #ifdef RTCONFIG_YANDEXDNS
 				if (yadns_mode != YADNS_DISABLED)
@@ -2137,14 +2137,14 @@ int update_resolvconf(void)
 			fprintf(fp_servers, "server=%s\n", server[unit]);
 			fprintf(fp_servers, "server=%s#%u\n", server[unit], YADNS_DNSPORT);
 		}
-	}
+	} else
 #endif
 #ifdef RTCONFIG_DNSPRIVACY
 	if (dnspriv_enable) {
-		fprintf(fp, "nameserver %s\n", "127.0.1.1");
 		fprintf(fp_servers, "server=%s\n", "127.0.1.1");
-	}
+	} else
 #endif
+	;
 
 #ifdef RTCONFIG_IPV6
 	if (ipv6_enabled() && is_routing_enabled()) {
@@ -2230,18 +2230,22 @@ void wan6_up(const char *wan_ifname)
 	struct in_addr addr4;
 	struct in6_addr addr;
 	char gateway[INET6_ADDRSTRLEN];
-	int mtu, service = get_ipv6_service();
+	int mtu, service, accept_defrtr;
 
-	if (!wan_ifname || (strlen(wan_ifname) <= 0) ||
-		(service == IPV6_DISABLED))
+	if (!wan_ifname || *wan_ifname == '\0')
 		return;
 
+	service = get_ipv6_service();
 	switch (service) {
 	case IPV6_NATIVE_DHCP:
 #ifdef RTCONFIG_6RELAYD
 	case IPV6_PASSTHROUGH:
 #endif
+		accept_defrtr = service == IPV6_NATIVE_DHCP && /* limit to native by now */
+				nvram_match(ipv6_nvname("ipv6_ifdev"), "ppp") ?
+				nvram_get_int(ipv6_nvname("ipv6_accept_defrtr")) : 1;
 		ipv6_sysconf(wan_ifname, "accept_ra", 1);
+		ipv6_sysconf(wan_ifname, "accept_ra_defrtr", accept_defrtr);
 		ipv6_sysconf(wan_ifname, "forwarding", 0);
 		break;
 	case IPV6_MANUAL:
@@ -2251,6 +2255,8 @@ void wan6_up(const char *wan_ifname)
 	case IPV6_6RD:
 		update_6rd_info();
 		break;
+	case IPV6_DISABLED:
+		return;
 	}
 
 	set_intf_ipv6_dad(wan_ifname, 0, 1);
