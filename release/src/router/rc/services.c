@@ -1477,6 +1477,7 @@ void start_dnsmasq(void)
 				dhcp_start, dhcp_end, nvram_safe_get("lan_netmask"), dhcp_lease);
 
 #ifdef RTCONFIG_WIFI_SON
+			//if (nvram_get_int("wl0.1_bss_enabled"))
 			if (sw_mode() != SW_MODE_REPEATER)
 			{
 
@@ -1505,6 +1506,7 @@ void start_dnsmasq(void)
 				lan, start, lan, start + count - 1, nvram_safe_get("lan_netmask"), dhcp_lease);
 
 #ifdef RTCONFIG_WIFI_SON
+			//if (nvram_get_int("wl0.1_bss_enabled"))
 			if (sw_mode() != SW_MODE_REPEATER)
 			{
 				char glan[24];
@@ -7816,7 +7818,7 @@ void start_chilli(void)
                     if ((vstrsep(b, ">", &htmlIdx, &brdName, &sessionTime, &UIType, &UIPath, &ifName, &enService, &enPass, &bandwidthMaxDown, &bandwidthMaxUp) < 9 ))
                         continue;
 			  brCount++;
-			  if(1 != is_intf_up(FREEWIFIIF)){
+			  if(1 != (is_intf_up(FREEWIFIIF))){
 		  	     eval("brctl", "addbr", FREEWIFIIF);
 		  	     eval("ifconfig", FREEWIFIIF, "up");
 			  }
@@ -8222,9 +8224,9 @@ start_services(void)
 #endif
 
 #if defined(RTCONFIG_IPSEC)
-        //if(nvram_get_int("ipsec_server_enable") || nvram_get_int("ipsec_client_enable"))
-        rc_ipsec_nvram_convert_check();
-        rc_ipsec_config_init();
+	//if(nvram_get_int("ipsec_server_enable") || nvram_get_int("ipsec_client_enable"))
+	rc_ipsec_nvram_convert_check();
+	rc_ipsec_config_init();
 #if defined(HND_ROUTER)
 	rc_set_ipsec_stack_block_size();
 #endif
@@ -10078,6 +10080,8 @@ again:
 						kill(1, SIGTERM);
 					}
 				}
+				if(stop_commit == 0)
+					nvram_unset(ASUS_STOP_COMMIT);		/* FINISH FW Writting */
 			}
 			else {
 				// recover? or reboot directly
@@ -10267,7 +10271,7 @@ again:
 				if (!nvram_match("nflash_swecc", "1"))
 				{
 					_dprintf(" Write FW to the 2nd partition.\n");
-					if (nvram_contains_word("rc_support", "nandflash"))     /* RT-AC56S,U/RT-AC68U/RT-N16UHP */
+					if (nvram_contains_word("rc_support", "nandflash"))	/* RT-AC56S,U/RT-AC68U/RT-N16UHP */
 						eval("mtd-write2", upgrade_file, "linux2");
 					else
 						eval("mtd-write", "-i", upgrade_file, "-d", "linux2");
@@ -10327,8 +10331,6 @@ again:
 				} else {
 					kill(1, SIGTERM);
 				}
-				if(stop_commit == 0)
-					nvram_unset(ASUS_STOP_COMMIT);		/* FINISH FW Writting */
 			}
 			else {
 				// recover? or reboot directly
@@ -13591,7 +13593,14 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 	{
 		// TODO : add path here
 	}
- 	else
+#if defined(RTCONFIG_QCA_LBD)
+	else if (strcmp(script, "qca_lbd") == 0)
+	{
+		if(action & RC_SERVICE_STOP) stop_qca_lbd();
+		if(action & RC_SERVICE_START) start_qca_lbd();
+	}
+#endif
+	else
 	{
 		fprintf(stderr,
 			"WARNING: rc notified of unrecognized event `%s'.\n",
@@ -13993,13 +14002,6 @@ void start_amas_lldpd(void)
 		dbG("exec lldpd debug mode(%s)\n", exec_lldpd);
 		system(exec_lldpd);
 	}
-#if defined(RTCONFIG_QCA_LBD)
-	else if (strcmp(script, "qca_lbd") == 0)
-	{
-		if(action & RC_SERVICE_STOP) stop_qca_lbd();
-		if(action & RC_SERVICE_START) start_qca_lbd();
-	}
-#endif
 	else
 		fprintf(fp, "lldpd -L /usr/sbin/lldpcli -I %s -s %s\n", bind_ifnames, productid);
 
