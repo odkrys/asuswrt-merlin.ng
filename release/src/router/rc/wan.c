@@ -412,13 +412,6 @@ start_igmpproxy(char *wan_ifname)
 #endif
 #endif
 
-#ifdef RTCONFIG_MULTICAST_IPTV
-	if (nvram_get_int("switch_stb_x") > 6 &&
-	    nvram_match("switch_wantag", "movistar") &&
-	    !nvram_match("iptv_ifname", wan_ifname))
-		return;
-#endif
-
 	stop_igmpproxy();
 
 	if (nvram_get_int("udpxy_enable_x")) {
@@ -430,6 +423,13 @@ start_igmpproxy(char *wan_ifname)
 			"-c", nvram_safe_get("udpxy_clients"),
 			"-a", nvram_get("lan_ifname") ? : "br0");
 	}
+
+#ifdef RTCONFIG_MULTICAST_IPTV
+	if (nvram_get_int("switch_stb_x") > 6 &&
+	    nvram_match("switch_wantag", "movistar") &&
+	    !nvram_match("iptv_ifname", wan_ifname))
+		return;
+#endif
 
 #if !defined(HND_ROUTER)
 	if (!nvram_get_int("mr_enable_x"))
@@ -2141,6 +2141,8 @@ int update_resolvconf(void)
 #endif
 #ifdef RTCONFIG_DNSPRIVACY
 	if (dnspriv_enable) {
+		if (!nvram_get_int("dns_local"))
+			fprintf(fp, "nameserver %s\n", "127.0.1.1");
 		fprintf(fp_servers, "server=%s\n", "127.0.1.1");
 	} else
 #endif
