@@ -623,6 +623,7 @@ void update_wan_state(char *prefix, int state, int reason)
 	else if(state == WAN_STATE_STOPPING) {
 		snprintf(tmp, sizeof(tmp), "/var/run/ppp-wan%d.status", unit);
 		unlink(tmp);
+		run_custom_script("wan-stop", 0, tmp, NULL);
 	}
         else if (state == WAN_STATE_CONNECTED) {
 		sprintf(tmp,"%c",prefix[3]);

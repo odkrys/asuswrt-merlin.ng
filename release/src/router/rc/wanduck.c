@@ -2098,6 +2098,7 @@ void handle_wan_line(int wan_unit, int action){
 	if(action){
 //_dprintf("nat_rule: stop_nat_rules 3.\n");
 		nat_state = stop_nat_rules();
+		run_custom_script("wan-action", 0, NULL, NULL);
 	}
 	/*
 	 * When C2C and remove the redirect rules,
