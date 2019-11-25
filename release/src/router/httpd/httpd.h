@@ -87,13 +87,11 @@ struct useful_redirect_list {
 
 extern struct useful_redirect_list useful_redirect_lists[];
 
-
-// HACK: fix linker error when AMAS=n
+#ifdef RTCONFIG_AMAS
 struct AiMesh_whitelist {
 	char *pattern;
 	char *mime_type;
 };
-#ifdef RTCONFIG_AMAS
 extern struct AiMesh_whitelist AiMesh_whitelists[];
 #endif
 
