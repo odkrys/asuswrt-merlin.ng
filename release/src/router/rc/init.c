@@ -2025,9 +2025,12 @@ static pid_t run_shell(int timeout, int nowait)
 	if (waitfor(STDIN_FILENO, timeout) <= 0)
 		return 0;
 
+#if 0
 	if (ate_factory_mode())
 	        argv = argv_shell;
-	else if (!check_if_file_exist("/etc/shadow"))
+	else 
+#endif
+	if (!check_if_file_exist("/etc/shadow"))
 		setup_passwd();
 
 	switch (pid = fork()) {
@@ -8943,12 +8946,10 @@ int init_nvram(void)
 	add_rc_support("dnsfilter");
 #endif
 
+	add_rc_support("am_addons");
+
 #ifdef RTCONFIG_NTPD
 	add_rc_support("ntpd");
-#endif
-
-#ifdef RTCONFIG_DNSPRIVACY
-	add_rc_support("dnspriv");
 #endif
 
 #ifdef RTCONFIG_DNSPRIVACY

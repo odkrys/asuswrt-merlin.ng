@@ -1,7 +1,102 @@
 Asuswrt-Merlin 384/NG Changelog
 ===============================
 
-384.14 (xx-xxx-xxxx)
+384.15 (xx-xxx-2020)
+  The RT-AC87U and RT-AC3200 are not supported by this release, see
+  the 384.13_3 release released separately for these two models.
+
+  - NEW: wan-event script.  The first parameter will be the WAN unit
+         (0 for first WAN, 1 for secondary).  The second parameter
+         will be a string describing the type of event (init,
+         connected, etc...).  A wan-event of type "connected" will
+         be identical to when the original wan-start script was
+         being run (wan-start should be considered deprecated
+         and will be removed in a future release)
+  - NEW: Implemented an official API for addon developers to
+         better integrate with the router.  This includes up
+         to ten different pages that can be added anywhere within
+         the webui, and a dedicated storage repository for your
+         settings, which can be interacted with through your
+         custom web page or through a shell script.
+         See the Wiki for more information:
+
+         https://github.com/RMerl/asuswrt-merlin/wiki/Addons-API
+
+  - NEW: amtm (Asuswrt-Merlin Terminal Menu) by thelonelycoder has
+         been added to the firmware.  Running "amtm" over SSH will
+         give you a menu allowing you to select and install various
+         addons, such as Diversion (ad blocker) or SKynet (an
+         advanced firewall extension).  The plugins for amtm are
+         still maintained by its original author (thelonelycoder).
+
+  - UPDATED: Backported some fixes from 384_81981, mostly related
+             to WAN, port bonding and mdns.
+  - UPDATED: Merged GPL 384_7756 for RT-AX88U, which adds OFDMA and
+             WPA3 support to that model.
+  - UPDATED: Merged with GPL 385_10002 for other models (from RT-AC68U)
+  - UPDATED: odhcp6c to 1.1-97-ge199804 (themiron)
+  - UPDATED: curl to 7.67.0.
+  - UPDATED: openssl-1.0 to 1.0.2u
+  - UPDATED: dnsmasq to 2.80-114-ge40d8be (themiron)
+  - CHANGED: Replaced entware-setup.sh script with link to amtm, as
+             using the amtm Entware installer is now the supported
+             method.
+  - FIXED: Some of the newest DNSFilter servers weren't properly set
+           up with IPv6 (dave14305)
+
+
+384.13_3 (xx-xxx-2020)
+  This release is only available for the RT-AC87U and RT-AC3200.
+
+  - NEW: wan-event script.  The first parameter will be the WAN unit
+         (0 for first WAN, 1 for secondary).  The second parameter
+         will be a string describing the type of event (init,
+         connected, etc...).  A wan-event of type "connected" will
+         be identical to when the original wan-start script was
+         being run (wan-start should be considered deprecated
+         and will be removed in a future release)
+  - NEW: Implemented an official API for addon developers to
+         better integrate with the router.  This includes up
+         to ten different pages that can be added anywhere within
+         the webui, and a dedicated storage repository for your
+         settings, which can be interacted with through your
+         custom web page or through a shell script.
+         See the Wiki for more information:
+
+         https://github.com/RMerl/asuswrt-merlin/wiki/Addons-API
+
+  - NEW: amtm (Asuswrt-Merlin Terminal Menu) by thelonelycoder has
+         been added to the firmware.  Running "amtm" over SSH will
+         give you a menu allowing you to select and install various
+         addons, such as Diversion (ad blocker) or SKynet (an
+         advanced firewall extension).  The plugins for amtm are
+         still maintained by its original author (thelonelycoder).
+
+  - UPDATED: odhcp6c to 1.1-97-ge199804 (themiron)
+  - UPDATED: openssl-1.0 to 1.0.2u
+  - UPDATED: curl to 7.67.0.
+  - UPDATED: OpenVPN to 2.4.8.
+  - UPDATED: dnsmasq to 2.80-114-ge40d8be (themiron)
+  - CHANGED: Replaced entware-setup.sh script with link to amtm, as
+             using the amtm Entware installer is now the supported
+             method.
+  - FIXED: Some of the newest DNSFilter servers weren't properly set
+           up with IPv6 (dave14305)
+
+
+384.14_2 (1-1-2020)
+  - FIXED: Missing cifs kernel module
+  - FIXED: stubby was linked with OpenSSL 1.0 instead of 1.1
+  - FIXED: some routers were reporting the Internet connection being
+           disconnected.  If you were affected and you had flashed
+           a customized bootloader, then please reflash your original
+           bootloader, as your modded bootloader is invalid, and other
+           potential issues may appear over time.
+  - FIXED: Random traffic spikes logged in Traffic Monitor (regression
+           from 384_81351)
+
+
+384.14 (14-Dec-2019)
   - NEW: Implement option to prevent Firefox's automatic usage of DoH.
          By default, this will only apply if you have DNSPrivacy
          enabled, or if you have DNSFilter enabled with a global
@@ -18,13 +113,11 @@ Asuswrt-Merlin 384/NG Changelog
   - UPDATED: RT-AC68U, RT-AC86U to GPL 384_81351
   - UPDATED: RT-AC88U, RT-AC3100 to GPL 384_81351 and binary
              blobs from 384_81116
-
-  - NOTE: There is currently no builds available for the RT-AC87U,
-          RT-AC3200 or RT-AC5300 due to lack of updated compatible
-          components from Asus for this release.
+  - UPDATED: RT-AC5300 to GPL 384_81351 and binary blobs from
+             384_81219.
 
   - UPDATED: miniupnpd 20190824
-  - UPDATED: dnsmasq 2.80-74-gdefd6b1 (themiron)
+  - UPDATED: dnsmasq 2.80-95-g1aef66b (themiron)
   - UPDATED: OpenSSL 1.0.2 to 1.0.2t (themiron)
   - UPDATED: OpenSSL 1.1.1 to 1.1.1d (themiron)
   - UPDATED: Curl 7.66.0
@@ -52,13 +145,47 @@ Asuswrt-Merlin 384/NG Changelog
            firewall (would prevent using ::/0 for instance).
   - FIXED: EUI64 support missing while in Load Balancing or
            using Multicast IPTV.
-  - FIXED: Asus DDNS failing to update due to an expired
-           certificate on Asus's server (inadyn will now
-           ignore that certificate error for Asus DDNS).
+  - FIXED: Asus DDNS failing to update due to an invalid
+           certificate on Asus's server.
   - FIXED: Let's Encrypt support would sometime fail when using
            Asus DDNS (fixed DNS publishing of validation record)
            (in addition to general failure fixed by GPL 81351)
-  - FIXED: IPv6 neighbour solnicitation drop toggle not working
+  - FIXED: IPv6 neighbour solicitation drop toggle not working
+           for some models
+  - FIXED: openvpn-event scripts would be executed even if custom
+           scripts were globally disabled
+
+
+384.13_2 (14-Dec-2019)
+  This release is only available for the RT-AC87U and RT-AC3200.
+
+  - NEW: Added "split" busybox applet.
+  - UPDATED: OpenSSL 1.0.2 to 1.0.2t (themiron)
+  - UPDATED: OpenSSL 1.1.1 to 1.1.1d (themiron)
+  - UPDATED: CA root certificates to October 9th 2019
+  - CHANGED: Rewrote the faketc script used to inject Codel into
+             Adaptive QoS as a C program for improved performance.
+  - CHANGED: Made webui SSL certificate generation compliant with
+             IOS 13 and MacOS 10.15 new requirements.
+  - CHANGED: IPv6 firewall now accepts empty values for local IP
+             (which means any local IP).
+  - FIXED: Non-working link to YandexDNS on the webui for
+           Russian models.
+  - FIXED: Webui wouldn't notify when running dangerously low on
+           free nvram (feature was lost at some point in the past)
+  - FIXED: Custom clientlist would be wiped if stopping an
+           OpenVPN server instance.
+  - FIXED: Incorrect detection of EUI64 addresses on the IPv6
+           firewall (would prevent using ::/0 for instance).
+  - FIXED: EUI64 support missing while in Load Balancing or
+           using Multicast IPTV.
+  - FIXED: Asus DDNS failing to update due to an invalid
+           certificate on Asus's server.
+  - FIXED: Let's Encrypt no longer working due to deprecated ACMEv1
+           protocol usage (backport from GPL 81351)
+  - FIXED: Let's Encrypt support would sometime fail when using
+           Asus DDNS (fixed DNS publishing of validation record)
+  - FIXED: IPv6 neighbour solicitation drop toggle not working
            for some models
 
 
