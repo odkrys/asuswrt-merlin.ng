@@ -140,20 +140,18 @@ int main (int argc, char **argv)
     }
 #endif
   
-  /* Close any file descriptors we inherited apart from std{in|out|err} 
-     
-     Ensure that at least stdin, stdout and stderr (fd 0, 1, 2) exist,
+  /* Ensure that at least stdin, stdout and stderr (fd 0, 1, 2) exist,
      otherwise file descriptors we create can end up being 0, 1, or 2 
      and then get accidentally closed later when we make 0, 1, and 2 
      open to /dev/null. Normally we'll be started with 0, 1 and 2 open, 
      but it's not guaranteed. By opening /dev/null three times, we 
      ensure that we're not using those fds for real stuff. */
-  for (i = 0; i < max_fd; i++)
-    if (i != STDOUT_FILENO && i != STDERR_FILENO && i != STDIN_FILENO)
-      close(i);
-    else
-      open("/dev/null", O_RDWR); 
-
+  for (i = 0; i < 3; i++)
+    open("/dev/null", O_RDWR); 
+  
+  /* Close any file descriptors we inherited apart from std{in|out|err} */
+  close_fds(max_fd, -1, -1, -1);
+  
 #ifndef HAVE_LINUX_NETWORK
 #  if !(defined(IP_RECVDSTADDR) && defined(IP_RECVIF) && defined(IP_SENDSRCADDR))
   if (!option_bool(OPT_NOWILD))
@@ -1872,7 +1870,8 @@ static void check_dns_listeners(time_t now)
 		    if (daemon->tcp_pids[i] == 0 && daemon->tcp_pipes[i] == -1)
 		      {
 			char a;
-			
+			(void)a; /* suppress potential unused warning */
+
 			daemon->tcp_pids[i] = p;
 			daemon->tcp_pipes[i] = pipefd[0];
 #ifdef HAVE_LINUX_NETWORK
@@ -1923,6 +1922,7 @@ static void check_dns_listeners(time_t now)
 	      if (!option_bool(OPT_DEBUG))
 		{
 		  char a = 0;
+		  (void)a; /* suppress potential unused warning */
 		  alarm(CHILD_LIFETIME);
 		  close(pipefd[0]); /* close read end in child. */
 		  daemon->pipe_to_parent = pipefd[1];
