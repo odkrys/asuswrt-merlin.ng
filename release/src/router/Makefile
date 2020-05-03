@@ -1642,6 +1642,9 @@ reinstall:
 	install -D $(TOOLCHAIN_64)/aarch64-buildroot-linux-gnu/sysroot/lib/libc.so.6 $(INSTALLDIR)/lib/aarch64/libc.so.6
 	install -D $(TOOLCHAIN_64)/aarch64-buildroot-linux-gnu/sysroot/lib/libnss_dns.so.2 $(INSTALLDIR)/lib/aarch64/libnss_dns.so.2
 	install -D $(TOOLCHAIN_64)/aarch64-buildroot-linux-gnu/sysroot/lib/libnss_files.so.2 $(INSTALLDIR)/lib/aarch64/libnss_files.so.2
+	install -D $(TOOLCHAIN_64)/aarch64-buildroot-linux-gnu/sysroot/lib/libdl.so.2 $(INSTALLDIR)/lib/aarch64/libdl.so.2
+	install -D $(TOOLCHAIN_64)/aarch64-buildroot-linux-gnu/sysroot/lib/libpthread.so.0 $(INSTALLDIR)/lib/aarch64/libpthread.so.0
+	install -D $(TOOLCHAIN_64)/aarch64-buildroot-linux-gnu/sysroot/lib/libgcc_s.so.1 $(INSTALLDIR)/lib/aarch64/libgcc_s.so.1
 
 ifeq ($(RTCONFIG_CFEZ),y)
 	install -D $(TOP)/envram_bin/envram$(BCMEX)$(EX7)/envrams $(INSTALLDIR)/usr/sbin/envrams
