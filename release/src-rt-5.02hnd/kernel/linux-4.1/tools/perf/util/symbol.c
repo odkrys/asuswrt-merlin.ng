@@ -560,6 +560,8 @@ struct process_kallsyms_args {
 bool symbol__is_idle(struct symbol *sym)
 {
 	const char * const idle_symbols[] = {
+		"arch_cpu_idle",
+		"cpuidle_enter_state",
 		"cpu_idle",
 		"cpu_startup_entry",
 		"intel_idle",
