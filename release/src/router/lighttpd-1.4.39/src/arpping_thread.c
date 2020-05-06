@@ -125,7 +125,7 @@ void save_arpping_list(void)
 		if(c->mac->used <17)
 			continue;
 
-		char temp[50]="\0";
+		char temp[53]="\0";
 		snprintf(temp, sizeof(temp), "%s<%s<%s<%d>", c->name->ptr, c->ip->ptr, c->mac->ptr, c->online);
 		buffer_append_string(smbdav_list, temp);
 	}
