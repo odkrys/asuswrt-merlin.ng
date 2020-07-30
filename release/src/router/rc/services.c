@@ -717,6 +717,7 @@ void create_passwd(void)
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 	char dec_passwd[64];
 #endif
+	char passwd_buf[128] = {0};
 
 #ifdef RTCONFIG_SAMBASRV	//!!TB
 	char *smbd_user;
@@ -747,7 +748,8 @@ void create_passwd(void)
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 	else{
 		memset(dec_passwd, 0, sizeof(dec_passwd));
-		pw_dec(p, dec_passwd, sizeof(dec_passwd));
+		strlcpy(passwd_buf, nvram_safe_get("http_passwd"), sizeof(passwd_buf));
+		pw_dec(passwd_buf, dec_passwd, sizeof(dec_passwd));
 		p = dec_passwd;
 	}
 #endif
@@ -4193,6 +4195,32 @@ start_logger(void)
 #endif
 #endif
 
+#ifdef RTCONFIG_BCM_HND_CRASHLOG
+	char path[32];
+	FILE *fp;
+	char line[256];
+	int count = 0;
+
+#if defined(RTCONFIG_JFFS2) || defined(RTCONFIG_BRCM_NAND_JFFS2)
+	snprintf(path, sizeof(path), "/jffs/crashlog.log");
+#else
+	snprintf(path, sizeof(path), "/tmp/crashlog.log");
+#endif
+
+	if ((fp = fopen(path, "r")) != NULL) {
+		while (fgets(line, sizeof(line), fp) && count < 5) {
+			logmessage("crashlog", "%s", line);
+
+			if (!strlen(line))
+				count++;
+		}
+
+		fclose(fp);
+
+		unlink(path);
+	}
+#endif
+
 	return 0;
 }
 
@@ -4470,7 +4498,7 @@ int
 start_acsd()
 {
 	int ret = 0;
-#ifdef RTCONFIG_BCM_7114
+#if defined(RTCONFIG_BCM_7114) || defined(GTAC5300)
 	char *acsd_argv[] = { "/usr/sbin/acsd", NULL };
 	int pid;
 #endif
@@ -4483,7 +4511,10 @@ start_acsd()
 	stop_acsd();
 
 	if (!restore_defaults_g && strlen(nvram_safe_get("acs_ifnames")))
-#ifdef RTCONFIG_BCM_7114
+#if defined(RTCONFIG_BCM_7114) || defined(GTAC5300)
+#if defined(GTAC5300)
+		if (nvram_get_int("re_mode") == 1)
+#endif
 		ret = _eval(acsd_argv, NULL, 0, &pid);
 #else
 		ret = eval("/usr/sbin/acsd");
@@ -4913,8 +4944,6 @@ stop_telnetd(void)
 void
 start_httpd(void)
 {
-	char tmp[100];
-
 	char *httpd_argv[] = { "httpd",
 		NULL, NULL,	/* -i ifname */
 		NULL, NULL,	/* -p port */
@@ -4957,31 +4986,18 @@ start_httpd(void)
 	}
 
 #ifdef RTCONFIG_HTTPS
-	snprintf(tmp, sizeof(tmp), "cat %s %s > %s", HTTPD_CERT, HTTPD_KEY, LIGHTTPD_CERTKEY);
 #ifdef RTCONFIG_LETSENCRYPT
 	if(nvram_match("le_enable", "1")) {
 		if(!is_le_cert(HTTPD_CERT) || !cert_key_match(HTTPD_CERT, HTTPD_KEY)) {
 			cp_le_cert(LE_FULLCHAIN, HTTPD_CERT);
 			cp_le_cert(LE_KEY, HTTPD_KEY);
-			system(tmp);
 		}
 	}
-	else if(nvram_match("le_enable", "2")) {
-                unlink(HTTPD_CERT);
-                unlink(HTTPD_KEY);
+	else if(nvram_match("le_enable", "2")){
                 if(f_exists(UPLOAD_CERT) && f_exists(UPLOAD_KEY)) {
                         eval("cp", UPLOAD_CERT, HTTPD_CERT);
                         eval("cp", UPLOAD_KEY, HTTPD_KEY);
-                        eval("cp", UPLOAD_CERT, "/etc/cert.crt");
-			system(tmp);
 		}
-	}
-#else
-	if(f_exists(UPLOAD_CERT) && f_exists(UPLOAD_KEY)){
-		eval("cp", UPLOAD_CERT, HTTPD_CERT);
-		eval("cp", UPLOAD_KEY, HTTPD_KEY);
-		eval("cp", UPLOAD_CERT, "/etc/cert.crt");
-		system(tmp);
 	}
 #endif
 
@@ -13637,7 +13653,7 @@ retry_wps_enr:
 		if (action & RC_SERVICE_START) start_ovpn_server(atoi(&script[9]));
 	}
 	else if (strncmp(script, "vpnrouting" ,10) == 0) {
-		if (action & RC_SERVICE_START) update_ovpn_routing(atoi(&script[10]));
+		if (action & RC_SERVICE_START) ovpn_update_routing(atoi(&script[10]));
 	}
 #endif
 #if defined(RTCONFIG_PPTPD) || defined(RTCONFIG_ACCEL_PPTPD)
@@ -13659,7 +13675,7 @@ retry_wps_enr:
 			stop_ovpn_server(openvpn_unit);
 		}
 		if (action & RC_SERVICE_START){
- 			start_ovpn_server(openvpn_unit);
+			start_ovpn_server(openvpn_unit);
  		}
  	}
 	else if (strncmp(script, "clearvpnserver", 14) == 0)

@@ -85,7 +85,7 @@ const int allowed_local_icmpv6[] =
 #endif
 
 #ifdef RTCONFIG_VPN_FUSION
-extern int write_vpn_fusion(FILE *fp, const char* lan_ip);
+extern int write_vpn_fusion_nat(FILE *fp, const char* lan_ip);
 #endif
 
 char *mac_conv(char *mac_name, int idx, char *buf);	// oleg patch
@@ -1029,6 +1029,9 @@ void convert_routes(void)
 	char *nv, *nvp, *b;
 	char *ip, *netmask, *gateway, *metric, *interface;
 	char wroutes[1024], lroutes[1024], mroutes[1024];
+#ifdef RTCONFIG_VPNC
+	char vroutes[1024];
+#endif
 	int wan_max_unit = WAN_UNIT_MAX;
 
 #ifdef RTCONFIG_MULTICAST_IPTV
@@ -1040,6 +1043,9 @@ void convert_routes(void)
 	wroutes[0] = 0;
 	lroutes[0] = 0;
 	mroutes[0] = 0;
+#ifdef RTCONFIG_VPNC
+	vroutes[0] = 0;
+#endif
 
 	if (nvram_match("sr_enable_x", "1")) {
 		nv = nvp = strdup(nvram_safe_get("sr_rulelist"));
@@ -1056,6 +1062,10 @@ void convert_routes(void)
 					routes = mroutes;
 				else if (strcmp(interface, "LAN") == 0)
 					routes = lroutes;
+#ifdef RTCONFIG_VPNC
+				else if (strcmp(interface, "VPN") == 0)
+					routes = vroutes;
+#endif
 				else
 					continue;
 
@@ -1074,6 +1084,10 @@ void convert_routes(void)
 		nvram_set(strcat_r(prefix, "route", tmp), wroutes);
 		nvram_set(strcat_r(prefix, "mroute", tmp), mroutes);
 	}
+
+#ifdef RTCONFIG_VPNC
+	nvram_set("vpnc_route", vroutes);
+#endif
 }
 
 /*
@@ -1675,7 +1689,7 @@ void nat_setting(char *wan_if, char *wan_ip, char *wanx_if, char *wanx_ip, char 
 #endif
 
 #ifdef RTCONFIG_VPN_FUSION
-        write_vpn_fusion(fp, lan_ip);
+        write_vpn_fusion_nat(fp, lan_ip);
 #endif
 
 #ifdef RTCONFIG_YANDEXDNS
@@ -6468,7 +6482,7 @@ int start_firewall(int wanunit, int lanunit)
 #endif
 
 #ifdef RTCONFIG_OPENVPN
-	run_ovpn_fw_script();
+	ovpn_run_fw_scripts();
 #endif
 
 	if (!nvram_get_int("ttl_inc_enable") && !nvram_get_int("ttl_spoof_enable")) {
@@ -6520,37 +6534,3 @@ void enable_ip_forward(void)
 #endif
 #endif
 }
-
-#if !defined(HND_ROUTER)
-void ipt_account(FILE *fp, char *interface) {
-	struct in_addr ipaddr, netmask, network;
-	char netaddrnetmask[] = "255.255.255.255/255.255.255.255 ";
-	int unit;
-
-	inet_aton(nvram_safe_get("lan_ipaddr"), &ipaddr);
-	inet_aton(nvram_safe_get("lan_netmask"), &netmask);
-
-	// bitwise AND of ip and netmask gives the network
-	network.s_addr = ipaddr.s_addr & netmask.s_addr;
-
-	sprintf(netaddrnetmask, "%s/%s", inet_ntoa(network), nvram_safe_get("lan_netmask"));
-
-	// If we are provided an interface (usually a VPN interface) then use it as WAN.
-	if (interface){
-		fprintf(fp, "iptables -A ipttolan -i %s -m account --aaddr %s --aname lan -j RETURN\n", interface, netaddrnetmask);
-		fprintf(fp, "iptables -A iptfromlan -o %s -m account --aaddr %s --aname lan -j RETURN\n", interface, netaddrnetmask);
-
-	} else {	// Create rules for every WAN interfaces available
-		fprintf(fp, "-I FORWARD -i br0 -j iptfromlan\n");
-		fprintf(fp, "-I FORWARD -o br0 -j ipttolan\n");
-		for (unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; unit++) {
-			if ((get_dualwan_by_unit(unit) != WANS_DUALWAN_IF_NONE) && (strlen(get_wan_ifname(unit)))) {
-				fprintf(fp, "-A ipttolan -i %s -m account --aaddr %s --aname lan -j RETURN\n", get_wan_ifname(unit), netaddrnetmask);
-				fprintf(fp, "-A iptfromlan -o %s -m account --aaddr %s --aname lan -j RETURN\n", get_wan_ifname(unit), netaddrnetmask);
-			}
-		}
-	}
-}
-
-#endif
-

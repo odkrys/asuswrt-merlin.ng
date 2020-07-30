@@ -1,12 +1,13 @@
 #!/bin/sh
-filedir=/etc/openvpn/dns
-filebase=$(echo $filedir/$dev | sed 's/\(tun\|tap\)1/client/')
-conffile=$filebase\.conf
-resolvfile=$filebase\.resolv
-dnsscript=$(echo /etc/openvpn/fw/"$dev"-dns\.sh | sed 's/\(tun\|tap\)1/client/')
-qosscript=$(echo /etc/openvpn/fw/"$dev"-qos\.sh | sed 's/\(tun\|tap\)1/client/')
-fileexists=
+
 instance=$(echo $dev | sed "s/tun1//")
+filedir="/etc/openvpn/client$instance"
+
+conffile=$filedir/client\.conf
+resolvfile=$filedir/client\.resolv
+dnsscript=$filedir/dns\.sh
+qosscript=$filedir/qos\.sh
+fileexists=
 serverips=
 searchdomains=
 
@@ -25,7 +26,7 @@ create_client_list(){
 		fi
 
 		VPN_IP=$(echo "$ENTRY" | cut -d ">" -f 2)
-		if [ "$VPN_IP" != "0.0.0.0" ]
+		if [ "$VPN_IP" != "" ]
 		then
 			TARGET_ROUTE=$(echo "$ENTRY" | cut -d ">" -f 4)
 			if [ "$TARGET_ROUTE" = "VPN" ]
@@ -57,6 +58,32 @@ run_script_event(){
 
 
 ### Main
+
+if [ $script_type = 'down' ]
+then
+	/usr/sbin/iptables -t nat -D PREROUTING -p udp -m udp --dport 53 -j DNSVPN$instance
+	/usr/sbin/iptables -t nat -D PREROUTING -p tcp -m tcp --dport 53 -j DNSVPN$instance
+	/usr/sbin/iptables -t nat -F DNSVPN$instance
+	/usr/sbin/iptables -t nat -X DNSVPN$instance
+
+	if [ -f $qosscript ]
+	then
+		sed -i "s/-A/-D/g" $qosscript
+		/bin/sh $qosscript
+		rm $qosscript
+	fi
+
+	[ -f "$dnsscript" ] && rm "$dnsscript"
+	[ -f "$resolvfile" ] && rm "$resolvfile"
+  	[ -f "$dnsscript" ] && rm "$dnsscript"
+
+	if [ "$(nvram get vpn_client$(echo $instance)_adns)" = 2 ]
+	then
+		/sbin/service restart_dnsmasq &
+	else
+		/sbin/service updateresolv &
+	fi
+fi
 
 if [ "$instance" = "" ] || [ "$(nvram get vpn_client$(echo $instance)_adns)" -eq 0 ]
 then
@@ -112,54 +139,26 @@ then
 		echo /usr/sbin/iptables -t nat -I PREROUTING -p tcp -m tcp --dport 53 -j DNSVPN$instance >> $dnsscript
 	fi
 
+	if [ -f $conffile ] || [ -f $resolvfile ] || [ -n "$fileexists" ]
+	then
+		if [ -f $dnsscript ]
+		then
+			chmod a+rx $dnsscript
+			/bin/sh $dnsscript
+		fi
+		/sbin/service updateresolv &
+	fi
+
 # QoS
 	if [ "$(nvram get vpn_client$(echo $instance)_rgw)" -ge 1 ] && [ "$(nvram get qos_enable)" -eq 1 ] && [ "$(nvram get qos_type)" -eq 1 ]
 	then
 		echo "#!/bin/sh" >> $qosscript
 		echo /usr/sbin/iptables -t mangle -A POSTROUTING -o br0 -m mark --mark 0x40000000/0xc0000000 -j MARK --set-xmark 0x80000000/0xC0000000 >> $qosscript
+		chmod a+rx $qosscript
 		/bin/sh $qosscript
 	fi
 fi
-
-
-if [ $script_type = 'down' ]
-then
-	/usr/sbin/iptables -t nat -D PREROUTING -p udp -m udp --dport 53 -j DNSVPN$instance
-	/usr/sbin/iptables -t nat -D PREROUTING -p tcp -m tcp --dport 53 -j DNSVPN$instance
-	/usr/sbin/iptables -t nat -F DNSVPN$instance
-	/usr/sbin/iptables -t nat -X DNSVPN$instance
-
-	if [ -f $qosscript ]
-	then
-		sed -i "s/-A/-D/g" $qosscript
-		/bin/sh $qosscript
-		rm $qosscript
-	fi
-fi
-
-if [ -f $conffile ] || [ -f $resolvfile ] || [ -n "$fileexists" ]
-then
-	if [ $script_type = 'up' ] ; then
-		if [ -f $dnsscript ]
-		then
-			/bin/sh $dnsscript
-		fi
-		/sbin/service updateresolv
-	elif [ $script_type = 'down' ]; then
-		rm $dnsscript
-		if [ "$(nvram get vpn_client$(echo $instance)_adns)" = 2 ]
-		then
-			/sbin/service restart_dnsmasq
-		else
-			/sbin/service updateresolv
-		fi
-	fi
-fi
-
-rmdir $filedir
-rmdir /etc/openvpn
 
 run_script_event $*
 
 exit 0
-

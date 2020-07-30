@@ -59,6 +59,7 @@
 #ifdef RTCONFIG_OPENVPN
 #include "openvpn_config.h"
 #include "openvpn_control.h"
+#include "openvpn_setup.h"
 #endif
 
 #ifdef RTCONFIG_PARENTALCTRL
@@ -799,7 +800,7 @@ void set_dpsta_ifnames();
 #ifdef RTAC86U
 extern void hnd_cfe_check();
 #endif
-#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114)
+#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCM4708)
 extern void wl_driver_mode_update(void);
 extern void dump_WlGetDriverStats(int fb, int count);
 #endif
@@ -1083,7 +1084,6 @@ extern void redirect_nat_setting(void);
 extern void set_load_balance(void);
 #endif
 extern void ip2class(char *lan_ip, char *netmask, char *buf);
-extern void ipt_account(FILE *fp, char *interface);
 #ifdef RTCONFIG_WIFI_SON
 extern void set_cap_apmode_filter(void);
 #endif
@@ -1539,18 +1539,20 @@ extern int vpnc_set_dev_policy_rule();
 extern int ovpn_up_main(int argc, char **argv);
 extern int ovpn_down_main(int argc, char **argv);
 extern int ovpn_route_up_main(int argc, char **argv);
-
-// openvpn.c
 #ifdef RTCONFIG_OPENVPN
-extern void start_ovpn_client(int clientNum);
-extern void stop_ovpn_client(int clientNum);
-extern void start_ovpn_server(int serverNum);
-extern void stop_ovpn_server(int serverNum);
+extern void create_ovpn_passwd();
+#endif
+
+#ifdef RTCONFIG_OPENVPN
+// openvpn.c
+extern void start_ovpn_client(int unit);
+extern void start_ovpn_server(int unit);
+extern void ovpn_write_dh(ovpn_sconf_t *sconf, int unit);
+extern int ovpn_is_clientcert_valid(int unit);
 extern void start_ovpn_eas(void);
 extern void stop_ovpn_eas(void);
-extern void run_ovpn_fw_script();
-extern void create_ovpn_passwd();
-extern void stop_ovpn_all();
+extern void stop_ovpn_client(int unit);
+extern void stop_ovpn_server(int unit);
 #endif
 
 // wanduck.c

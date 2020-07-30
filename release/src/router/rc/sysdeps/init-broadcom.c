@@ -2438,7 +2438,7 @@ void load_wl()
 		}
 	}
 
-#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114)
+#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCM4708)
 	wl_driver_mode_update();
 #endif
 
@@ -7903,16 +7903,18 @@ void fc_init()
 
 void fc_fini()
 {
-        eval("fc", "disable");
-        eval("fc", "flush");
+	eval("fc", "disable");
+	eval("fc", "flush");
 }
 
 void hnd_nat_ac_init(int bootup)
 {
 	int routing_mode = is_routing_enabled();
 
-	// traditional qos / bandwidth limter: disable fc
-	nvram_set_int("fc_disable", nvram_get_int("fc_disable_force") || (routing_mode && IS_NON_AQOS()) ? 1 : 0);
+	// A.QOS and BW QOS : not to disable fc
+	nvram_set_int("fc_disable", nvram_get_int("fc_disable_force") || (routing_mode && IS_NON_FC_QOS()) ? 1 : 0);
+
+	// A.QOS : no need to disable runner
 	nvram_set_int("runner_disable", nvram_get_int("runner_disable_force") || (routing_mode && IS_NON_AQOS()) ? 1 : 0);
 
 	if (nvram_match("fc_disable", "1"))
@@ -7927,7 +7929,7 @@ void hnd_nat_ac_init(int bootup)
 }
 #endif
 
-#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114)
+#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCM4708)
 /* This function updates the nvram radio_dmode_X to NIC/DGL depending on driver mode */
 void wl_driver_mode_update(void)
 {

@@ -195,6 +195,7 @@ extern int PS_pclose(FILE *);
 #define IS_BW_QOS()             (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") == 2)   // Bandwidth limiter
 #define IS_GFN_QOS()            (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") == 3)   // GeForce NOW QoS (Nvidia)
 #define IS_NON_AQOS()           (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") != 1)   // non A.QoS = others QoS (T.QoS / bandwidth monitor ... etc.)
+#define IS_NON_FC_QOS()         (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") != 1 && nvram_get_int("qos_type") != 2) // non FC QoS= others QoS except A.QOS / BW QOS
 
 /* Guest network mark */
 #define GUEST_INIT_MARKNUM 10   /*10 ~ 30 for Guest Network. */
@@ -385,13 +386,11 @@ enum {
 #ifdef RTCONFIG_ADV_RAST
 enum romaingEvent {
 	EID_RM_STA_MON = 1,
-	EID_RM_STA_MON_REPORT,
-	EID_RM_STA_CANDIDATE,
-	EID_RM_STA_ACL,
-#ifdef RTCONFIG_CONN_EVENT_TO_EX_AP
-	EID_RM_STA_EX_AP_CHECK,
-#endif
-	EID_RM_STA_FILTER,
+	EID_RM_STA_MON_REPORT = 2,
+	EID_RM_STA_CANDIDATE = 3,
+	EID_RM_STA_ACL = 4,
+	EID_RM_STA_FILTER = 5,
+	EID_RM_STA_EX_AP_CHECK = 6,
 	EID_RM_MAX
 };
 enum conndiagEvent {
@@ -865,6 +864,8 @@ enum {
 	MODEL_RTAX68U,
 	MODEL_RT4GAC56,
 	MODEL_DSLAX82U,
+	MODEL_RTAX55,
+	MODEL_GTAXE11000,
 	MODEL_MAX
 };
 
@@ -2113,6 +2114,9 @@ static inline int is_aqr_phy_exist(void)
 #endif	/* RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033 */
 
 /* misc.c */
+#if !defined(HND_ROUTER)
+extern void ipt_account(FILE *fp, char *interface);
+#endif
 extern char *get_productid(void);
 extern char *get_lan_hostname(void);
 extern void logmessage_normal(char *logheader, char *fmt, ...);

@@ -68,6 +68,9 @@
 #include <wlutils.h>
 #endif
 #endif
+#ifdef RTAC88U
+#include <rtk_switch.h>
+#endif
 
 #if defined(RTCONFIG_NOTIFICATION_CENTER)
 #include <libnt.h>
@@ -2260,6 +2263,41 @@ void service_check(void)
 #endif
 		led_control(LED_POWER, ++boot_ready%2);
 }
+
+#ifdef RTAC88U
+int rtl_period = 3, sltime = 3, rtl_fail_max = 1;
+static int rtl_count = 0, rtl_fail = 0;
+
+void rtkl_check()
+{
+	if(rtl_count++ >= rtl_period) {
+		rtl_count = 0;
+
+		if((rtkswitch_ioctl(GET_AWARE, 0, 0)) < 0 )
+			rtl_fail++;
+		if(nvram_match("rtl_dbg", "1")) {
+			_dprintf("NOW rtl_fail=%d\n", rtl_fail);
+		}
+
+		if(rtl_fail >= rtl_fail_max) {
+			logmessage("rtl_fail", "\nrtkswitch fail access, restart.\n");
+			_dprintf("rtl_fail:%d, hw reset it\n", rtl_fail);
+
+			set_gpio(10, 0);
+			sleep(1);
+			set_gpio(10, 1);
+
+			sleep(sltime);
+			rtkswitch_ioctl(INIT_SWITCH, 0, 0);
+			rtkswitch_ioctl(INIT_SWITCH_UP, 0, 0);
+			rtkswitch_ioctl(SET_EXT_TXDELAY, 1, 0);
+			rtkswitch_ioctl(SET_EXT_RXDELAY, 4, 0);
+		
+			rtl_fail = 0;
+		}
+	}
+}
+#endif
 
 /* @return:
  * 	0:	not in MFG mode.
@@ -6363,7 +6401,6 @@ static void ntevent_disk_usage_check(){
 }
 #endif
 
-#ifdef RTCONFIG_FORCE_AUTO_UPGRADE
 /* DEBUG DEFINE */
 #define FAUPGRADE_DEBUG             "/tmp/FAUPGRADE_DEBUG"
 
@@ -6382,133 +6419,7 @@ static void ntevent_disk_usage_check(){
         } \
     }
 
-static void auto_firmware_check()
-{
-	int periodic_check = 0;
-	static int period_retry = 0;
-	static int bootup_check_period = 3;	//wait 3 times(90s) to check
-	static int bootup_check = 1;
-#ifndef RTCONFIG_FW_JUMP
-	char *datestr[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-	time_t now;
-	struct tm local;
-	static int rand_hr, rand_min;
-
-	if (!nvram_get_int("ntp_ready")){
-		FAUPGRADE_DBG("ntp_ready false");
-		return;
-	}
-
-	if(bootup_check_period > 0){	//bootup wait 90s to check
-		bootup_check_period--;
-		return;
-	}
-
-	time(&now);
-	localtime_r(&now, &local);
-
-	if(local.tm_hour == (2 + rand_hr) && local.tm_min == rand_min) //at 2 am + random offset to check
-		periodic_check = 1;
-
-	//FAUPGRADE_DBG("periodic_check = %d, period_retry = %d, bootup_check = %d", periodic_check, period_retry, bootup_check);
-#ifndef RTCONFIG_FW_JUMP
-	if (bootup_check || periodic_check || period_retry!=0)
-#endif
-	{
-#if defined(RTCONFIG_ASUSCTRL) && defined(GTAC5300)
-		if (periodic_check)
-			asus_ctrl_sku_update();
-#endif
-#ifdef RTCONFIG_ASD
-		//notify asd to download version file
-		if (pids("asd"))
-		{
-			killall("asd", SIGUSR1);
-		}
-#endif
-		if(nvram_get_int("webs_state_dl_error")){
-			if(!strncmp(datestr[local.tm_wday], nvram_safe_get("webs_state_dl_error_day"), 3))
-				return;
-			else
-				nvram_set("webs_state_dl_error", "0");
-		}
-
-		if (bootup_check)
-		{
-			bootup_check = 0;
-			rand_hr = rand_seed_by_time() % 4;
-			rand_min = rand_seed_by_time() % 60;
-			FAUPGRADE_DBG("periodic_check AM %d:%d", 2 + rand_hr, rand_min);
-#ifdef RTCONFIG_AMAS
-			if(nvram_match("re_mode", "1"))
-				return;
-#endif
-		}
-
-		period_retry = (period_retry+1) % 3;
-#endif
-
-		if(!nvram_contains_word("rc_support", "noupdate")){
-#if defined(RTL_WTDOG)
-			stop_rtl_watchdog();
-#endif
-			nvram_set("webs_update_trigger", "watchdog");
-			eval("/usr/sbin/webs_update.sh");
-#if defined(RTL_WTDOG)
-			start_rtl_watchdog();
-#endif
-		}
-#ifdef RTCONFIG_DSL
-		eval("/usr/sbin/notif_update.sh");
-#endif
-
-		if (nvram_get_int("webs_state_update")
-				&& !nvram_get_int("webs_state_error")
-				&& !nvram_get_int("webs_state_dl_error")
-				&& strlen(nvram_safe_get("webs_state_info"))
-				)
-		{
-			FAUPGRADE_DBG("retrieve firmware information");
-
-			if (!get_chance_to_control()){
-				FAUPGRADE_DBG("user in use");
-				return;
-			}
-
-			if (nvram_match("x_Setting", "0")){
-				FAUPGRADE_DBG("default status");
-				return;
-			}
-
-			if (nvram_get_int("webs_state_flag") != 2)
-			{
-				period_retry = 0; //stop retry
-				FAUPGRADE_DBG("no need to upgrade firmware");
-				return;
-			}
-
-			nvram_set("webs_state_dl", "1");
-
-			notify_rc_and_wait("stop_upgrade;start_webs_upgrade");
-
-			nvram_set("webs_state_dl", "0");
-
-			if (nvram_get_int("webs_state_dl_error"))
-			{
-				FAUPGRADE_DBG("error execute upgrade script");
-				reboot(RB_AUTOBOOT);
-				return;
-			}
-		}
-		else{
-			FAUPGRADE_DBG("could not retrieve firmware information: webs_state_update = %d, webs_state_error = %d, webs_state_dl_error = %d, webs_state_info.len = %d", nvram_get_int("webs_state_update"), nvram_get_int("webs_state_error"), nvram_get_int("webs_state_dl_error"), strlen(nvram_safe_get("webs_state_info")));
-		}
-		return;
-	}
-}
-
-#else	// Asuswrt-Merlin's code, without the auto-upgrade and debug logging
-
+// Asuswrt-Merlin's code, without the auto-upgrade and debug logging
 static void auto_firmware_check_merlin()
 {
 	static int period_retry = -1;
@@ -6579,7 +6490,6 @@ static void auto_firmware_check_merlin()
 		}
 	}
 }
-#endif
 
 #if defined(RTCONFIG_LP5523) || defined(RTCONFIG_LYRA_HIDE)
 #define FILE_LP5523 "/tmp/lp5523_log"
@@ -7939,6 +7849,10 @@ void watchdog(int sig)
 	service_check();
 #endif
 
+#ifdef RTAC88U
+	rtkl_check();
+#endif
+
 #if defined(RTCONFIG_QCA) && defined(RTCONFIG_WIGIG)
 	wigig_temperatore_check();
 #endif
@@ -8088,8 +8002,10 @@ void watchdog(int sig)
 	ate_temperature_record();
 #endif
 
-#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114)
+#if !defined(RTAC68U)	// Kludge - requires newer GPL
+#if defined(HND_ROUTER) || defined(RTCONFIG_BCM_7114) || defined(RTCONFIG_BCM4708)
 	dump_WlGetDriverStats(0, 1);
+#endif
 #endif
 
 #ifdef WATCHDOG_PERIOD2
@@ -8279,6 +8195,12 @@ watchdog_main(int argc, char *argv[])
 #ifdef RTCONFIG_BCMWL6
 	if (mediabridge_mode())
 		wlonunit = nvram_get_int("wlc_band");
+#endif
+
+#ifdef RTAC88U
+	rtl_period = nvram_get_int("rtl_period")?:3;
+	sltime = nvram_get_int("sleep")?:3; 
+	rtl_fail_max = nvram_get_int("rtl_fail_max")?:1; 
 #endif
 
 #ifdef RTCONFIG_RALINK

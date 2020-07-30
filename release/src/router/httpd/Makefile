@@ -214,8 +214,8 @@ endif
 
 ifeq ($(RTCONFIG_OPENVPN),y)
 OBJS += openvpn_options.o
-CFLAGS += -I$(TOP)/libvpn
-LIBS += -L$(TOP)/libvpn -lvpn
+CFLAGS += -I$(TOP)/libovpn
+LIBS += -L$(TOP)/libovpn -lovpn
 ifeq ($(RTCONFIG_OPENSSL11),y)
 LIBS += -L$(TOP)/openssl-1.1 -lssl -lcrypto -ldl
 else
@@ -305,6 +305,11 @@ LIBS += -L$(TOP)/libpasswd -lpasswd
 
 ifeq ($(RTCONFIG_LANTIQ),y)
 LIBS += -L$(TOP)/fapi_wlan_common-05.04.00.131 -lfapiwlancommon -ldl -L$(TOP)/libhelper-1.4.0.2 -lhelper -L$(TOP)/libfapi-0.1 -lfapi -L$(TOP)/wireless_tools/ -liw
+endif
+
+ifeq ($(RTCONFIG_LIBASUSLOG),y)
+CFLAGS += -I$(TOP)/libasuslog
+LIBS += -L$(TOP)/libasuslog -lasuslog
 endif
 
 all: httpd #test_apps

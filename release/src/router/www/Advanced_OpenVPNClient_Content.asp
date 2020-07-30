@@ -538,10 +538,17 @@ function validForm(){
 		return false;
 	}
 
+	if (getRadioValue(document.form.vpn_client_userauth) &&
+	    (document.form.vpn_client_username.value == "" || document.form.vpn_client_password.value == "")) {
+		alert("You must provide a username and a password.")
+		document.form.vpn_client_username.focus();
+		return false;
+	}
+
 	if (!validator.safeName(document.form.vpn_client_desc) ||
 	    !validator.numberRange(document.form.vpn_client_verb, 0, 6) ||
-	    !validator.numberRange(document.form.vpn_client_reneg, -1, 2147483647) ||
-	    !validator.numberRange(document.form.vpn_client_connretry, -1, 999) ||
+	    !validator.numberRange(document.form.vpn_client_reneg, -1, 32767) ||
+	    !validator.numberRange(document.form.vpn_client_connretry, 0, 999) ||
 	    !validator.numberRange(document.form.vpn_client_port, 1, 65535))
 		return false;
 
@@ -583,7 +590,9 @@ function applyRule(manual_switch){
 	for(i=0; i<rule_num; i++){
 		tmp_value += "<";
 		for(j=0; j<item_num-1; j++){
-			tmp_value += document.getElementById('clientlist_table').rows[i].cells[j].innerHTML;
+			var field = document.getElementById('clientlist_table').rows[i].cells[j].innerHTML;
+			if (field == "0.0.0.0") field = "";
+			tmp_value += field;
 			if(j != item_num-2)
 				tmp_value += ">";
 		}
@@ -732,6 +741,8 @@ function showclientlist(){
 			code +='<tr id="row'+i+'">';
 			var clientlist_col = clientlist_row[i].split('&#62');
 				for(var j = 0; j < clientlist_col.length; j++){
+					if ((j == 1 || j == 2) && clientlist_col[j] == "0.0.0.0")
+						clientlist_col[j] = "";
 					code +='<td width="' + width[j] +'">'+ clientlist_col[j] +'</td>';
 				}
 				if (j < 4) {
@@ -766,12 +777,6 @@ function addRow_Group(upper){
 
 	if (!validator.safeName(document.form.clientlist_deviceName))
 		return false;
-
-	if(document.form.clientlist_ipAddr.value=="")
-		document.form.clientlist_ipAddr.value="0.0.0.0";
-
-	if(document.form.clientlist_dstipAddr.value=="")
-		document.form.clientlist_dstipAddr.value="0.0.0.0";
 
 	if (!validator.ipv4cidr(document.form.clientlist_ipAddr)) {
 		document.form.clientlist_ipAddr.focus();
@@ -928,9 +933,6 @@ function showConnStatus() {
 					break;
 				case "6":
 					code = "Error - Authentication failure!";
-					break;
-				case "7":
-					code = "Error - Key/Certificate error!";
 					break;
 				default:
 					code = "Error - check configuration!";
@@ -1407,7 +1409,7 @@ function refreshVPNIP() {
 						</td>
 					</tr>
 					<tr>
-						<th>Connection Retry attempts<br><i>(-1 for infinite)</th>
+						<th>Connection Retry attempts<br><i>(0 for infinite)</th>
 						<td>
 							<input type="text" maxlength="3" class="input_6_table" name="vpn_client_connretry" value="<% nvram_get("vpn_client_connretry"); %>">
 						</td>
