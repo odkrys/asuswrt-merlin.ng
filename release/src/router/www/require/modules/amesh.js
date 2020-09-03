@@ -36,6 +36,7 @@ function initial_amesh_obj() {
 function check_wl_auth_support(_wl_auth_mode_x, _obj) {
 	var support_flag = false;
 	var support_auth = ["psk2", "pskpsk2"];
+
 	for (var idx in support_auth) {
 		if (support_auth.hasOwnProperty(idx)) {
 			if(_wl_auth_mode_x == support_auth[idx]) {
@@ -46,7 +47,7 @@ function check_wl_auth_support(_wl_auth_mode_x, _obj) {
 	}
 	if(!support_flag) {
 		var auth_text = _obj.text();
-		var confirm_msg = "When using " + auth_text + " Authentication, AiMesh system will become invalid.\nAre you sure to process?";/*untranslated*/
+		var confirm_msg = "<#AiMesh_confirm_msg9#>".replace("#AUTHMODE", auth_text);
 		support_flag = confirm(confirm_msg);
 	}
 	return support_flag;
@@ -55,10 +56,10 @@ function AiMesh_confirm_msg(_name, _value) {
 	var check_operation_mode = function(_value) {
 		switch(parseInt(_value)) {
 			case 2 :
-				return confirm("If you change to Repeater mode, it will disable AiMesh system.\nAre you sure to process?");/* untranslated */
+				return confirm("<#AiMesh_confirm_msg2#>\n<#AiMesh_confirm_msg0#>");//Repeater
 				break;
 			case 4 :
-				return confirm("If you change to Media Bridge mode, it will disable AiMesh system.\nAre you sure to process?");/* untranslated */
+				return confirm("<#AiMesh_confirm_msg4#>\n<#AiMesh_confirm_msg0#>");//Media Bridge
 				break;
 			default :
 				return true;
@@ -81,38 +82,34 @@ function AiMesh_confirm_msg(_name, _value) {
 			if(current_ssid == original_ssid && current_psk == original_psk)
 				return true;
 			else if(current_ssid != original_ssid && current_psk != original_psk)
-				return confirm("If you change SSID and WPA Pre-Shared Key, it will affect the offline AiMesh node wifi connectivity.\nAre you sure to process?");/* untranslated */
+				return confirm("<#AiMesh_confirm_msg_ChangeSSIDnKey#>\n<#AiMesh_confirm_msg0#>");//SSID & WPA key
 			else if(current_ssid != original_ssid)
-				return confirm("If you change SSID, it will affect the offline AiMesh node wifi connectivity.\nAre you sure to process?");/* untranslated */
+				return confirm("<#AiMesh_confirm_msg_ChangeSSID#>\n<#AiMesh_confirm_msg0#>");//SSID
 			else if(current_psk != original_psk)
-				return confirm("If you change WPA Pre-Shared Key, it will affect the offline AiMesh node wifi connectivity.\nAre you sure to process?");/* untranslated */
+				return confirm("<#AiMesh_confirm_msg_ChangeKey#>\n<#AiMesh_confirm_msg0#>");/* untranslated */
 		}
 		else
 			return true;
 	};
 	var check_wireless_country_code = function() {
-		return confirm("By changing country code, AiMesh might not work properly.\nAre you sure to process?");/* untranslated */
+		return confirm("<#AiMesh_confirm_msg_CountryCode#>\n<#AiMesh_confirm_msg0#>");//Country code
 	};
 	var feature_value = {
-		"Wireless_WPS" : {
-			"value" : 1,
-			"text" : "If you disable WPS, it will affect the AiMesh wifi connectivity.\nAre you sure to process?" /* untranslated */
-		},
 		"Wireless_Radio" : {
 			"value" : 1,
-			"text" : "If you disable Radio, it will affect the AiMesh wifi connectivity.\nAre you sure to process?" /* untranslated */
+			"text" : "<#AiMesh_confirm_msg5#>\n<#AiMesh_confirm_msg0#>" //Disable Radio
 		},
 		"Wireless_Hide" : {
 			"value" : 0,
-			"text" : "If you Hide SSID, it will affect the AiMesh wifi connectivity.\nAre you sure to process?" /* untranslated */
+			"text" : "<#AiMesh_confirm_msg6#>\n<#AiMesh_confirm_msg0#>" //Hide SSID
 		},
 		"Wireless_Hide_WPS" : {
 			"value" : 0,
-			"text" : "If you Hide SSID, it will disable the WPS function and affect the AiMesh wifi connectivity.\nAre you sure to process?" /* untranslated */
+			"text" : "<#AiMesh_confirm_msg7#>\n<#AiMesh_confirm_msg0#>" //Hide SSID
 		},
 		"DHCP_Server" : {
 			"value" : 1,
-			"text" : "If you disable DHCP Server, it will affect the AiMesh wifi connectivity.\nAre you sure to process?" /* untranslated */
+			"text" : "<#AiMesh_confirm_msg8#>\n<#AiMesh_confirm_msg0#>" //Disable DHCP
 		}
 	};
 	var confirm_flag = true;
@@ -120,7 +117,6 @@ function AiMesh_confirm_msg(_name, _value) {
 		case "Operation_Mode" :
 			confirm_flag = check_operation_mode(_value);
 			break;
-		case "Wireless_WPS" :
 		case "Wireless_Radio" :
 		case "Wireless_Hide" :
 		case "Wireless_Hide_WPS" :

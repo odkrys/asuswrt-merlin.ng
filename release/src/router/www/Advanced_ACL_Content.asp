@@ -21,6 +21,7 @@
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <style>
 #pull_arrow{
  	float:center;
@@ -39,14 +40,6 @@
 var wl_maclist_x_array = '<% nvram_get("wl_maclist_x"); %>';
 
 var manually_maclist_list_array = new Array();
-Object.prototype.getKey = function(value) {
-	for(var key in this) {
-		if(this[key] == value) {
-			return key;
-		}
-	}
-	return null;
-};
 
 function initial(){
 	if(isSwMode("re") && concurrep_support){
@@ -66,13 +59,15 @@ function initial(){
 	var wl_maclist_x_row = wl_maclist_x_array.split('&#60');
 	var clientName = "New device";
 	for(var i = 1; i < wl_maclist_x_row.length; i += 1) {
-		if(clientList[wl_maclist_x_row[i]]) {
-			clientName = (clientList[wl_maclist_x_row[i]].nickName == "") ? clientList[wl_maclist_x_row[i]].name : clientList[wl_maclist_x_row[i]].nickName;
+		var _index = wl_maclist_x_row[i].toUpperCase();
+		if(clientList[_index]) {
+			clientName = (clientList[_index].nickName == "") ? clientList[_index].name : clientList[_index].nickName;
 		}
 		else {
 			clientName = "New device";
 		}
-		manually_maclist_list_array[wl_maclist_x_row[i]] = clientName;
+
+		manually_maclist_list_array[_index] = clientName;
 	}
 
 	if((sw_mode == 2 || sw_mode == 4) && document.form.wl_unit.value == '<% nvram_get("wlc_band"); %>' && !concurrep_support){
@@ -147,7 +142,8 @@ function show_wl_maclist_x(){
 			code += '</td></tr></table>';
 			code += '</td>';
 			code += '<td width="20%"><input type="button" class=\"remove_btn\" onclick=\"deleteRow(this, \'' + clientMac + '\');\" value=\"\"/></td></tr>';
-			clientListEventData.push({"mac" : clientMac, "name" : "", "ip" : "", "callBack" : "ACL"});
+			if(validator.mac_addr(clientMac))
+				clientListEventData.push({"mac" : clientMac, "name" : "", "ip" : "", "callBack" : "ACL"});
 		});
 	}
 	code += '</table>';
@@ -165,7 +161,6 @@ function deleteRow(r, delMac){
 	var i = r.parentNode.parentNode.rowIndex;
 	delete manually_maclist_list_array[delMac];
 	document.getElementById('wl_maclist_x_table').deleteRow(i);
-
 	if(Object.keys(manually_maclist_list_array).length == 0)
 		show_wl_maclist_x();
 }
@@ -185,7 +180,7 @@ function addRow(obj, upper){
 		obj.focus();
 		obj.select();			
 		return false;
-	}else if(!check_macaddr(obj, check_hwaddr_flag(obj))){
+	}else if(!check_macaddr(obj, check_hwaddr_flag(obj, 'inner'))){
 		obj.focus();
 		obj.select();	
 		return false;	
@@ -201,6 +196,55 @@ function addRow(obj, upper){
 		}		
 	}		
 	
+	if(isSupport("amas") && isSupport("force_roaming") && isSupport("sta_ap_bind")) {
+		var client_bind_count_status = function(){
+			var status = {"wl_maclist_max_count":0, "sta_binding_count":0, "allow_maximum":64};
+			var sta_binding_list = decodeURIComponent(httpApi.nvramCharToAscii(["sta_binding_list"], true).sta_binding_list);
+			var each_node_rule = sta_binding_list.split("<");
+			$.each(each_node_rule, function(index, value){
+				if(value != ""){
+					var node_client_rule = value.split(">");
+					var node_mac = "";
+					$.each(node_client_rule, function(index, value){
+						switch(index){
+							case 2://client list
+								var each_client = value.split("|");
+								$.each(each_client, function(index, value){
+									status.sta_binding_count++;
+								});
+								break;
+						}
+					});
+				}
+			});
+			for(var i = 0; i < wl_info.wl_if_total; i += 1) {
+				var wl_maclist_x = httpApi.nvramGet(["wl" + i + "_maclist_x"])["wl" + i + "_maclist_x"];
+				status["wl" + i + "_count"] = 0;
+				if(wl_maclist_x != "") {
+					var temp_count = (wl_maclist_x.split('&#60').length) - 1;
+					status.wl_maclist_max_count = Math.max(temp_count, status.wl_maclist_max_count);
+					status["wl" + i + "_count"] = temp_count;
+				}
+			}
+			var cfg_re_maxnum = httpApi.hookGet("get_onboardingstatus", true).cfg_re_maxnum;
+			if(cfg_re_maxnum != undefined)
+				status.allow_maximum = status.allow_maximum - (cfg_re_maxnum * 2);//bcm need double.
+
+			return status;
+		};
+		var client_bind_status = client_bind_count_status();
+		var current_rule_count = Object.keys(manually_maclist_list_array).length;
+		if((client_bind_status.sta_binding_count + current_rule_count) >= client_bind_status.allow_maximum) {
+			var hint = "<#AiMesh_Binding_Rule_Maxi#>";
+			hint += "\n";
+			hint += "<#AiMesh_Binding_Rule_Count#>".replace("#RULECOUNT", client_bind_status.sta_binding_count);
+			hint += "\n";
+			hint += "<#AiMesh_Delete_Unused_Rule#>";
+			alert(hint);
+			return false;
+		}
+	}
+
 	if(clientList[mac]) {
 		manually_maclist_list_array[mac] = (clientList[mac].nickName == "") ? clientList[mac].name : clientList[mac].nickName;
 	}
@@ -223,6 +267,7 @@ function applyRule(){
 	var tmp_value = "";
 
 	Object.keys(manually_maclist_list_array).forEach(function(key) {
+		key = key.toUpperCase();
 		tmp_value += "<" + key;
 	});
 
@@ -354,7 +399,7 @@ function checkWLReady(){
 </script>
 </head>
 
-<body onload="initial();">
+<body onload="initial();" class="bg">
 <div id="TopBanner"></div>
 <div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" src="" width="0" height="0" frameborder="0"></iframe>

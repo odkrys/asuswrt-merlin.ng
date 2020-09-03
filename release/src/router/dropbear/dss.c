@@ -73,6 +73,18 @@ int buf_get_dss_pub_key(buffer* buf, dropbear_dss_key *key) {
 		goto out;
 	}
 
+	/* test 1 < g < p */
+	if (mp_cmp_d(key->g, 1) != MP_GT) {
+		dropbear_log(LOG_WARNING, "Bad DSS g");
+		ret = DROPBEAR_FAILURE;
+		goto out;
+	}
+	if (mp_cmp(key->g, key->p) != MP_LT) {
+		dropbear_log(LOG_WARNING, "Bad DSS g");
+		ret = DROPBEAR_FAILURE;
+		goto out;
+	}
+
 	ret = DROPBEAR_SUCCESS;
 	TRACE(("leave buf_get_dss_pub_key: success"))
 out:
@@ -172,6 +184,13 @@ int buf_dss_verify(buffer* buf, const dropbear_dss_key *key, const buffer *data_
 		goto out;
 	}
 
+#if DEBUG_DSS_VERIFY
+	printmpint("dss verify p", key->p);
+	printmpint("dss verify q", key->q);
+	printmpint("dss verify g", key->g);
+	printmpint("dss verify y", key->y);
+#endif
+
 	/* hash the data */
 	sha1_init(&hs);
 	sha1_process(&hs, data_buf->data, data_buf->len);
@@ -181,6 +200,9 @@ int buf_dss_verify(buffer* buf, const dropbear_dss_key *key, const buffer *data_
 	/* w = (s')-1 mod q */
 	/* let val1 = s' */
 	bytes_to_mp(&val1, (const unsigned char*) &string[SHA1_HASH_SIZE], SHA1_HASH_SIZE);
+#if DEBUG_DSS_VERIFY
+	printmpint("dss verify s'", &val1);
+#endif
 
 	if (mp_cmp(&val1, key->q) != MP_LT) {
 		TRACE(("verify failed, s' >= q"))
@@ -198,6 +220,9 @@ int buf_dss_verify(buffer* buf, const dropbear_dss_key *key, const buffer *data_
 	/* u1 = ((SHA(M')w) mod q */
 	/* let val1 = SHA(M') = msghash */
 	bytes_to_mp(&val1, msghash, SHA1_HASH_SIZE);
+#if DEBUG_DSS_VERIFY
+	printmpint("dss verify r'", &val1);
+#endif
 
 	/* let val3 = u1 = ((SHA(M')w) mod q */
 	if (mp_mulmod(&val1, &val2, key->q, &val3) != MP_OKAY) {
@@ -259,6 +284,7 @@ void buf_put_dss_sign(buffer* buf, const dropbear_dss_key *key, const buffer *da
 	unsigned char msghash[SHA1_HASH_SIZE];
 	unsigned int writelen;
 	unsigned int i;
+	size_t written;
 	DEF_MP_INT(dss_k);
 	DEF_MP_INT(dss_m);
 	DEF_MP_INT(dss_temp1);
@@ -315,31 +341,31 @@ void buf_put_dss_sign(buffer* buf, const dropbear_dss_key *key, const buffer *da
 	buf_putstring(buf, SSH_SIGNKEY_DSS, SSH_SIGNKEY_DSS_LEN);
 	buf_putint(buf, 2*SHA1_HASH_SIZE);
 
-	writelen = mp_unsigned_bin_size(&dss_r);
+	writelen = mp_ubin_size(&dss_r);
 	dropbear_assert(writelen <= SHA1_HASH_SIZE);
 	/* need to pad to 160 bits with leading zeros */
 	for (i = 0; i < SHA1_HASH_SIZE - writelen; i++) {
 		buf_putbyte(buf, 0);
 	}
-	if (mp_to_unsigned_bin(&dss_r, buf_getwriteptr(buf, writelen)) 
+	if (mp_to_ubin(&dss_r, buf_getwriteptr(buf, writelen), writelen, &written)
 			!= MP_OKAY) {
 		dropbear_exit("DSS error");
 	}
 	mp_clear(&dss_r);
-	buf_incrwritepos(buf, writelen);
+	buf_incrwritepos(buf, written);
 
-	writelen = mp_unsigned_bin_size(&dss_s);
+	writelen = mp_ubin_size(&dss_s);
 	dropbear_assert(writelen <= SHA1_HASH_SIZE);
 	/* need to pad to 160 bits with leading zeros */
 	for (i = 0; i < SHA1_HASH_SIZE - writelen; i++) {
 		buf_putbyte(buf, 0);
 	}
-	if (mp_to_unsigned_bin(&dss_s, buf_getwriteptr(buf, writelen)) 
+	if (mp_to_ubin(&dss_s, buf_getwriteptr(buf, writelen), writelen, &written)
 			!= MP_OKAY) {
 		dropbear_exit("DSS error");
 	}
 	mp_clear(&dss_s);
-	buf_incrwritepos(buf, writelen);
+	buf_incrwritepos(buf, written);
 
 	mp_clear_multi(&dss_k, &dss_temp1, &dss_temp2, &dss_r, &dss_s,
 			&dss_m, NULL);

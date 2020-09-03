@@ -74,7 +74,7 @@ helpcontent[3] = new Array("",
 							"<#WLANConfig11b_x_roamingassit_desc#>",	//31
 							"<#WLANConfig11b_x_Airtime_Fairness_itemdesc#>",
 							"<#WLANConfig11b_x_Auto#>",
-							"Enable/Disable Bluetooth Coexisistence. Data rate 1Mbps and 2 Mbps are not allowed in Pre-emptive mode. TX Bursting is also not allowed in Pre-emptive mode."
+							"<#WLANConfig11b_x_BTCoexistence_itemdesc#>"
 							 );
 
 helpcontent[4] = new Array("",
@@ -93,9 +93,12 @@ helpcontent[5] = new Array("",
 							 "<#LANHostConfig_x_WINSServer_itemdesc#>",
 							 "<#LANHostConfig_ManualDHCPEnable_itemdesc#>",
 							 "<#LANHostConfig_ManualDHCPMacaddr_itemdesc#>",
-							 "<#LANHostConfig_ManualDHCPMulticast_itemdesc#>",
+							 "<#LANHostConfig_ManualDHCPMulticast_itemdesc#>",	//11
 							 "<#LANHostConfig_ManualDHCPSTB_itemdesc#>",
-							 "<#LANHostConfig_x_DDNSHostNames_itemdesc#>");
+							 "<#LANHostConfig_x_DDNSHostNames_itemdesc#>",
+							 "<#RouterConfig_IGMPver_itemname#>",
+							 "<#RouterConfig_MLDver_itemname#>",
+							 "Enable Fast Leave");
 helpcontent[6] = new Array("",
 						   "<#RHELP_desc4#>",
 						   "<#RHELP_desc5#>",
@@ -139,7 +142,15 @@ helpcontent[7] = new Array("",
 							 "<b>PPP Echo:</b> Use Echo-Request and Echo-Reply message defined in PPP Link Control Protocol (LCP) to test the PPP connection. <b>DNS Probe:</b> Performs a DNS lookup request and resolved IP address to test DNS connection",	//31
 							 "Send an LCP Echo-Request frame to the peer every n seconds.",
 							 "Presume the peer to be dead if n LCP Echo-Requests are sent without receiving a valid LCP Echo-Reply. Use of this option requires a non-zero value for the Echo Interval parameter.",
-"If DNS resolution fails or returns the wrong address to n times, then it is assumed that the internet connection is completely unsuccessful");
+							 "If DNS resolution fails or returns the wrong address to n times, then it is assumed that the internet connection is completely unsuccessful",
+							 "You can configure your router to use a third party DNS server that supports encryption to prevent snooping on your DNS queries.  While this increases privacy, note that it might decrease general DNS performance.",
+							 "In strict mode, only allow the use of a DNS server if the identity of the remote server can be authenticated.  In opportunistic mode it will attempt to authenticate, but will still use that server if it fails to authenticate its identity, allowing name resolution to still work properly.",
+							 "The IP address of the nameserver.",
+							 "TLS Port  (defaults to 853 if left empty).",
+							 "Authentication domain name checked against the server certificate.",
+							 "(Optional) Base64 hash value of the sha256 fingerprint of the public key.",
+							 "Pre-configured servers, select one to prefill the fields below for you, then click on the Add button to add it to the list.");	//41
+
 //Firewall
 helpcontent[8] = new Array("",
 						   "<#FirewallConfig_WanLanLog_itemdesc#>",
@@ -171,7 +182,9 @@ helpcontent[11] = new Array("",
 							"<#LANHostConfig_x_TimeZone_DSTEnd_desc#>",
 							"For destination IP address, you can:<br/>(a) enter a specific IP address, such as \"192.168.1.2\"<br/>(b) enter IP addresses within one subnet or within the same IP pool, such as \"192.168.1.0/24\"",	/* untranslated */
 							"<#System_Allow_Specified_IP#>",
-							"<#usb_HDD_Hibernation_Desc#>");
+							"<#usb_HDD_Hibernation_Desc#>",
+							"If there is no client connection for more than 1 minute, the PLC will enter sleep mode (power saving). The PLC will not wake up until the client connects. (It takes about ten seconds to wake up the PLC)", /* untranslated */
+							"Enable Login CAPTCHA is to ensure only human users to pass through and prevent brute force login attack."); /* untranslated */
 //Log
 helpcontent[12] = new Array("",
 							"<#General_x_SystemUpTime_itemdesc#>",
@@ -221,10 +234,11 @@ helpcontent[18] = new Array("",
 helpcontent[19] = new Array("",
 							"<#Setting_factorydefault_itemdesc#>",
 							"<#Setting_save_itemdesc#>",
-							"<#Setting_upload_itemdesc#>");
+							"<#Setting_upload_itemdesc#>",
+							"<#Setting_factorydefault_itemdesc_dpi#>"
+							);
 // QoS
 helpcontent[20] = new Array("",
-							"",
 							'<#EzQoS_bandwidth_note1#>',
 							"<#min_bound_desc#>",
 							"<#max_bound_desc#>",
@@ -376,7 +390,8 @@ helpcontent[33] = new Array("",
 
 //Feedback
 helpcontent[34] = new Array("",
-							"This feature allows system to capture diagnostic System debug log in the background, duration depends on the “Diagnostic debug log capture duration” option, depends on the option selected, system might transmit single debug log automatically to ASUS Support Team for analysis after capture completed or transmit multiple debug logs over a period of time. Click on the yellow System icon could cancel the debug log capture."/*untranslated*/
+							"This feature allows system to capture diagnostic System debug log in the background, duration depends on the “Diagnostic debug log capture duration” option, depends on the option selected, system might transmit single debug log automatically to ASUS Support Team for analysis after capture completed or transmit multiple debug logs over a period of time. Click on the yellow System icon could cancel the debug log capture.",/*untranslated*/
+							"<#Feedback_case_No_desc#>"
 							);
 
 helpcontent[50] = new Array("",
@@ -394,7 +409,7 @@ helpcontent[50] = new Array("",
 				"Filter out what minimum level get logged in the system log",
 				"The JFFS partition is a portion of the router flash memory which contains data such as OpenVPN key/cers and user created scripts.  It's strongly recommended to create a backup of it before updating your firmware.",
 				"Disabled: Actively block the port used by the protocol<br><br>Enabled: Allow NAT traffic through the protocol's port<br><br>Enabled+NAT Helper: Allow NAT traffic, and use a Netfilter module to help handle NAT forwarding for that protocol's traffic",
-				"This feature tells the router to regularly check for the availability of a new firmware version and to notify you if there is one available.  You can manually initiate that check from the Firmware Upgrade page.  You must still manually download and update your router afterward.",
+				"This feature tells the router to regularly check for the availability of a new firmware version and to notify you if there is one available.  You must still manually download and update your router afterward.",
 				"OpenVPN can automatically negotiate the cipher based on a list.  Requires OpenVPN 2.4.  For older remote client/servers, disable it, or use Enabled with Fallback mode, which will use the legacy cipher parameter when connecting to older remotes.",
 				"MiniDLNA can offer a web page showing the number of indexed media files and a list of DLNA clients.  Default address is http://router.asus.com:8200/",
 				"Wanduck sends DNS queries every few seconds to check for the WAN state.  You can disable this behaviour here.  DO NOT disable those probes if using Dual WAN, especially in failover mode.",
@@ -405,6 +420,11 @@ helpcontent[50] = new Array("",
 				"Restrict this rule to a specific source IP address",
 				"How should your router handle DNS servers pushed by the remote VPN server.  Disabled = ignore them, Relaxed = just add to list of known DNS,  Strict = add to list, but use all servers in order specified, Exclusive = use only these servers for all queries from clients routed through the tunnel.",
 				"When an unsigned reply is received, check that this zone really doesn't use DNSSEC.  Disabling this will speed up lookups, but it also means someone can forge a reply in a signed zone by simply not signing the reply, bypassing any security benefit normally provided by DNSSEC.",
-				"Internal: use the IP configured on your router's WAN.  External: query a remote service to use your public IP.  The latter will work through double NAT, but might not work properly when using a VPN tunnel or with some DDNS providers.");
-// Last: 50,26
+				"Internal: use the IP configured on your router's WAN.  External: query a remote service to use your public IP.  The latter will work through double NAT, but might not work properly when using a VPN tunnel or with some DDNS providers.",
+				"By default, DNS queries generated by the router itself are sent directly to the WAN DNS servers.  Enabling this option will instruct the router to send queries to the local dnsmasq instead, allowing caching as well as LAN name resolution.  Only enable this if you have router scripts that require it.  This does not affect your clients, ONLY queries done by the router itself.",
+				"You can finetune traffic allocation by specifying the packet overhead of your WAN connection.  You can use a pre-configured preset, or manually enter a value, and enable ATM if you know your WAN connection uses it (many DSL-based services do).  If unsure, just leave these values to their default setting.",
+				"Intercept NTP connections from LAN clients and redirect them to the router's own NTP server.  Note that IPv6 is not supported.",
+				"Allow or block any traffic sent to your network through the VPN tunnel.  Should be set to Block unless running a site-to-site tunnel, or explicitely expecting inbound connections coming through the tunnel.",
+				"Some clients like Firefox will automatically switch to DNS over HTTPS, bypassing your preferred DNS servers.  This option may prevent that.  If set to Auto (the default), it will only prevent it if either DNSPrivacy or DNSFilter in global mode are enabled.");
+// Last: 50,31
 

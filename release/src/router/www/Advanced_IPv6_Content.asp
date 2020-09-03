@@ -46,7 +46,7 @@ var ipv6_unit = '0';
 function initial(){	
 	show_menu();	
 	// https://www.asus.com/US/support/FAQ/113990
-	httpApi.faqURL("faq", "113990", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("113990", function(url){document.getElementById("faq").href=url;});
 	if(!IPv6_Passthrough_support){
 		$("#ipv6_service option[value='ipv6pt']").remove();
 		$("#ipv6_service option[value='flets']").remove();
@@ -65,10 +65,14 @@ function initial(){
 		}
 	}
 
-	if(!wans_flag)
+	if(!wans_flag){
 		inputCtrl(document.form.wan_selection, 0);
-	else
+	}	
+	else{
 		genWANSoption();
+		if(mtwancfg_support)
+			document.getElementById("wan_sel_tr").style.display = "";
+	}
 
 	if(based_modelid == "BRT-AC828")
 		document.getElementById("wan_sel_tr").style.display = "";
@@ -77,10 +81,13 @@ function initial(){
 function showInputfield(v){
 	
 	if(v == "dhcp6"){
-		if(wan_proto_orig == "l2tp" || wan_proto_orig == "pptp" || wan_proto_orig == "pppoe")
+		if(wan_proto_orig == "l2tp" || wan_proto_orig == "pptp" || wan_proto_orig == "pppoe"){
 			inputCtrl(document.form.ipv6_ifdev_select, 1);
-		else
+			showInputfield2('ipv6_ifdev', document.form.ipv6_ifdev_select.value);
+		}else{
 			inputCtrl(document.form.ipv6_ifdev_select, 0);
+			showInputfield2('ipv6_ifdev', 0);
+		}
 		inputCtrl(document.form.ipv6_dhcp_pd[0], 1);
 		inputCtrl(document.form.ipv6_dhcp_pd[1], 1);
 		inputCtrl(document.form.ipv6_tun_v4end, 0);
@@ -156,6 +163,7 @@ function showInputfield(v){
 			inputCtrl(document.form.ipv6_ifdev_select, 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[0], 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[1], 0);
+		showInputfield2('ipv6_ifdev', 0);
 		inputCtrl(document.form.ipv6_tun_v4end, 0);
 		inputCtrl(document.form.ipv6_relay, 0);
 		inputCtrl(document.form.ipv6_6rd_dhcp[0], 0);
@@ -199,6 +207,7 @@ function showInputfield(v){
 		inputCtrl(document.form.ipv6_ifdev_select, 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[0], 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[1], 0);
+		showInputfield2('ipv6_ifdev', 0);
 		inputCtrl(document.form.ipv6_tun_v4end, 0);
 		inputCtrl(document.form.ipv6_relay, 1);
 		inputCtrl(document.form.ipv6_6rd_dhcp[0], 0);
@@ -251,6 +260,7 @@ function showInputfield(v){
 		inputCtrl(document.form.ipv6_ifdev_select, 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[0], 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[1], 0);
+		showInputfield2('ipv6_ifdev', 0);
 		inputCtrl(document.form.ipv6_tun_v4end, 1);
 		inputCtrl(document.form.ipv6_relay, 0);
 		inputCtrl(document.form.ipv6_6rd_dhcp[0], 0);
@@ -302,6 +312,7 @@ function showInputfield(v){
 		inputCtrl(document.form.ipv6_ifdev_select, 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[0], 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[1], 0);
+		showInputfield2('ipv6_ifdev', 0);
 		inputCtrl(document.form.ipv6_tun_v4end, 0);
 		inputCtrl(document.form.ipv6_relay, 0);
 		inputCtrl(document.form.ipv6_6rd_dhcp[0], 1);
@@ -352,6 +363,7 @@ function showInputfield(v){
 			inputCtrl(document.form.ipv6_ifdev_select, 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[0], 0);
 		inputCtrl(document.form.ipv6_dhcp_pd[1], 0);
+		showInputfield2('ipv6_ifdev', 0);
 		inputCtrl(document.form.ipv6_tun_v4end, 0);
 		inputCtrl(document.form.ipv6_relay, 0);
 		inputCtrl(document.form.ipv6_6rd_dhcp[0], 0);
@@ -418,12 +430,12 @@ function showInputfield(v){
 		inputCtrl(document.form.ipv6_dhcp_pd[1], 0);	
 		inputCtrl(document.form.ipv6_dhcp6c_release[0], 0);
 		inputCtrl(document.form.ipv6_dhcp6c_release[1], 0);
+		inputCtrl(document.form.ipv6_dhcp_pd[1], 0);
+		showInputfield2('ipv6_ifdev', 0);
 		inputCtrl(document.form.ipv6_tun_v4end, 0);
 		inputCtrl(document.form.ipv6_relay, 0);
 		inputCtrl(document.form.ipv6_6rd_dhcp[0], 0);
 		inputCtrl(document.form.ipv6_6rd_dhcp[1], 0);
-		inputCtrl(document.form.ipv6_dhcp6c_release[0], 0);
-		inputCtrl(document.form.ipv6_dhcp6c_release[1], 0);
 		inputCtrl(document.form.ipv6_6rd_prefix, 0);
 		inputCtrl(document.form.ipv6_6rd_prefixlen, 0);
 		inputCtrl(document.form.ipv6_6rd_router, 0);
@@ -561,6 +573,10 @@ function showInputfield2(s, v){
 				document.form.ipv6_dhcp_start_start.value = ipv6_dhcp_start_orig.split("::")[1];
 				document.form.ipv6_dhcp_end_end.value = ipv6_dhcp_end_orig.split("::")[1];
 		}
+	}else if(s=='ipv6_ifdev'){
+		var enable = (document.form.ipv6_service.value == "dhcp6" && v == "ppp") ? 1 : 0;
+		inputCtrl(document.form._ipv6_accept_defrtr[0], enable);
+		inputCtrl(document.form._ipv6_accept_defrtr[1], enable);
 	}
 }
 // } Viz 2013.08 modify for dhcp-pd 
@@ -813,7 +829,10 @@ function applyRule(){
 				document.form.ipv6_prefix_length.disabled = false;
 				document.form.ipv6_prefix.disabled = false;
 			}
-				
+
+			document.form.ipv6_accept_defrtr.disabled = false;
+			document.form.ipv6_accept_defrtr.value = document.form._ipv6_accept_defrtr[0].checked?1:0;
+
 			if(document.form.ipv6_autoconf_type[1].checked){
 				document.form.ipv6_dhcp_start.disabled = false;
 				document.form.ipv6_dhcp_start.value = document.form.ipv6_prefix_span_for_start.value +"::"+document.form.ipv6_dhcp_start_start.value;
@@ -822,7 +841,7 @@ function applyRule(){
 			}
 		}
 
-		if(document.form.ipv6_service.value=="flets"){
+		if(IPv6_Passthrough_support && document.form.ipv6_service.value=="flets"){
 			inputCtrl(document.form.ipv6_ifdev_select, 1);
 			document.form.ipv6_ifdev.value = "eth";
 		}else if(document.form.ipv6_ifdev_select.disabled){	// set ipv6_ifdev="ppp" while interface is disabled.
@@ -853,6 +872,8 @@ function applyRule(){
 				document.form.ipv6_prefix_s.value = document.form.ipv6_prefix.value;
 		}
 		//End
+
+		document.form.ipv6_radvd.value = document.form._ipv6_radvd[0].checked?1:0;
 
 		/*if(machine_arm)	//Viz 2013.06 Don't need to reboot anymore
 		{ // MODELDEP: Machine ARM structure
@@ -938,6 +959,13 @@ function genWANSoption(){
 				
 			document.form.wan_selection.options[i] = new Option(wans_dualwan_NAME, i);
 		}
+
+		if(based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U"){
+			if(wans_dualwan_NAME == "WAN2")
+				document.form.wan_selection.options[i] = new Option("10G base-T", i);
+			else if(wans_dualwan_NAME == "SFP+")
+				document.form.wan_selection.options[i] = new Option("10G SFP+", i);
+		}
 	}
 
 	document.form.wan_selection.selectedIndex = parseInt(ipv6_unit);	
@@ -946,7 +974,7 @@ function genWANSoption(){
 </script>
 </head>
 
-<body onload="initial();" onunLoad="return unload_body();">
+<body onload="initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 <div id="hiddenMask" class="popup_bg">
 	<table cellpadding="5" cellspacing="0" id="dr_sweet_advise" class="dr_sweet_advise" align="center">
@@ -983,6 +1011,8 @@ function genWANSoption(){
 <input type="hidden" name="ipv6_prefix_length_s" value="">
 <input type="hidden" name="ipv6_rtr_addr_s" value="">
 <input type="hidden" name="ipv6_prefix_s" value="">
+<input type="hidden" name="ipv6_radvd" value="<% nvram_get("ipv6_radvd"); %>">
+<input type="hidden" name="ipv6_accept_defrtr" value="<% nvram_get("ipv6_accept_defrtr"); %>" disabled>
 <table class="content" align="center" cellpadding="0" cellspacing="0">
   <tr>
 	<td width="17">&nbsp;</td>
@@ -1046,20 +1076,27 @@ function genWANSoption(){
 					<tr>
 						<th><#wan_interface#></th>
 		     		<td>
-						<select name="ipv6_ifdev_select" class="input_option">
+						<select name="ipv6_ifdev_select" class="input_option" onchange="showInputfield2('ipv6_ifdev', this.value);">
 							<option class="content_input_fd" value="ppp" <% nvram_match("ipv6_ifdev", "ppp","selected"); %>>PPP</option>
 							<option class="content_input_fd" value="eth" <% nvram_match("ipv6_ifdev", "eth","selected"); %>><#wan_ethernet#></option>
 						</select>
 		     		</td>
 		     	</tr>
 		     	
-					<tr style="display:none;"><!-- Viz add dhcp-pd 2013.08-->
-						<th>DHCP-PD</th>
+				<tr style="display:none;"><!-- Viz add dhcp-pd 2013.08-->
+					<th>DHCP-PD</th>
 		     		<td>
 						<input type="radio" name="ipv6_dhcp_pd" class="input" value="1" onclick="showInputfield2('ipv6_dhcp_pd', this.value);" <% nvram_match("ipv6_dhcp_pd", "1","checked"); %>><#WLANConfig11b_WirelessCtrl_button1name#>
 						<input type="radio" name="ipv6_dhcp_pd" class="input" value="0" onclick="showInputfield2('ipv6_dhcp_pd', this.value);" <% nvram_match("ipv6_dhcp_pd", "0","checked"); %>><#btn_disable#>
 		     		</td>
-			</tr>
+		     	</tr>
+		     	<tr style="display:none;"><!-- Viz add ipv6_accept_defrtr 2019.01-->
+					<th>Accept Default Route</th>		<!-- Untranslated -->
+					<td>
+						<input type="radio" name="_ipv6_accept_defrtr" class="input" value="1" <% nvram_match("ipv6_accept_defrtr", "1","checked"); %>><#WLANConfig11b_WirelessCtrl_button1name#>
+						<input type="radio" name="_ipv6_accept_defrtr" class="input" value="0" <% nvram_match("ipv6_accept_defrtr", "0","checked"); %>><#btn_disable#>
+					</td>
+				</tr>
 
 			<tr style="display:none;">
 				<th>Release prefix on exit</th>
@@ -1069,7 +1106,7 @@ function genWANSoption(){
 				</td>
 			</tr>
 
-					<tr style="display:none;">
+				<tr style="display:none;">
 						<th><#IPv6_tun_v4end#></th>
 		     		<td>
 						<input type="text" maxlength="15" class="input_15_table" name="ipv6_tun_v4end" value="<% nvram_get("ipv6_tun_v4end"); %>" autocorrect="off" autocapitalize="off">
@@ -1299,15 +1336,13 @@ function genWANSoption(){
 						<td colspan="2"><#ipv6_auto_config#></td>
 				  </tr>
 				  </thead>		
-					<tr>
+				  <tr>
 						<th><#Enable_Router_AD#></th>
-		     		<td>
-							<select name="ipv6_radvd" class="input_option">
-								<option class="content_input_fd" value="1" <% nvram_match("ipv6_radvd", "1","selected"); %>><#WLANConfig11b_WirelessCtrl_button1name#></option>
-								<option class="content_input_fd" value="0" <% nvram_match("ipv6_radvd", "0","selected"); %>><#btn_disable#></option>
-							</select>
-		     		</td>
-		     	</tr>
+		     			<td>
+							<input type="radio" name="_ipv6_radvd" class="input" value="1" <% nvram_match("ipv6_radvd", "1","checked"); %>><#WLANConfig11b_WirelessCtrl_button1name#>
+							<input type="radio" name="_ipv6_radvd" class="input" value="0" <% nvram_match("ipv6_radvd", "0","checked"); %>><#btn_disable#>
+		     			</td>
+		     	  </tr>
 			</table>
 			<!--====================================Auto Config end===============================-->  	
 				

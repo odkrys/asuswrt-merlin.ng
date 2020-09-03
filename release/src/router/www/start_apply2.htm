@@ -10,6 +10,8 @@
 var page_modified = 0;
 var restart_time = 0;
 
+var rc_support = '<% nvram_get("rc_support"); %>'; 
+var dsl_support = (rc_support.search("dsl") == -1) ? false : true;
 var current_page = '<% get_parameter("current_page"); %>';
 var next_page = '<% get_parameter("next_page"); %>';
 var action_script = '<% get_parameter("action_script"); %>';
@@ -28,6 +30,63 @@ console.log("action_wait:" + action_wait);
 console.log("group_id:" + group_id);
 console.log("getflag:" + getflag);
  */
+var htmlEnDeCode = (function() {
+	var charToEntityRegex,
+		entityToCharRegex,
+		charToEntity,
+		entityToChar;
+
+	function resetCharacterEntities() {
+		charToEntity = {};
+		entityToChar = {};
+		// add the default set
+		addCharacterEntities({
+			'&amp;'	 :   '&',
+			'&gt;'	  :   '>',
+			'&lt;'	  :   '<',
+			'&quot;'	:   '"',
+			'&#39;'	 :   "'"
+		});
+	}
+
+	function addCharacterEntities(newEntities) {
+		var charKeys = [],
+			entityKeys = [],
+			key, echar;
+		for (key in newEntities) {
+			echar = newEntities[key];
+			entityToChar[key] = echar;
+			charToEntity[echar] = key;
+			charKeys.push(echar);
+			entityKeys.push(key);
+		}
+		charToEntityRegex = new RegExp('(' + charKeys.join('|') + ')', 'g');
+		entityToCharRegex = new RegExp('(' + entityKeys.join('|') + '|&#[0-9]{1,5};' + ')', 'g');
+	}
+
+	function htmlEncode(value){
+		var htmlEncodeReplaceFn = function(match, capture) {
+			return charToEntity[capture];
+		};
+
+		return (!value) ? value : String(value).replace(charToEntityRegex, htmlEncodeReplaceFn);
+	}
+
+	function htmlDecode(value) {
+		var htmlDecodeReplaceFn = function(match, capture) {
+			return (capture in entityToChar) ? entityToChar[capture] : String.fromCharCode(parseInt(capture.substr(2), 10));
+		};
+
+		return (!value) ? value : String(value).replace(entityToCharRegex, htmlDecodeReplaceFn);
+	}
+
+	resetCharacterEntities();
+
+	return {
+		htmlEncode: htmlEncode,
+		htmlDecode: htmlDecode
+	};
+})();
 
 function started_validating(){
 }
@@ -166,18 +225,18 @@ function showWlHint(updateFlag){
 			this.key = _key;
 		}
 
-		var ssid_nvram = [decodeURIComponent('<% nvram_char_to_ascii("", "wl0_ssid"); %>'), decodeURIComponent('<% nvram_char_to_ascii("", "wl1_ssid"); %>'), decodeURIComponent('<% nvram_char_to_ascii("", "wl2_ssid"); %>')];
+		var ssid_nvram = [htmlEnDeCode.htmlEncode(decodeURIComponent('<% nvram_char_to_ascii("", "wl0_ssid"); %>')), htmlEnDeCode.htmlEncode(decodeURIComponent('<% nvram_char_to_ascii("", "wl1_ssid"); %>')), htmlEnDeCode.htmlEncode(decodeURIComponent('<% nvram_char_to_ascii("", "wl2_ssid"); %>'))];
 		var auth_nvram = [decodeURIComponent('<% nvram_char_to_ascii("", "wl0_auth_mode_x"); %>'), decodeURIComponent('<% nvram_char_to_ascii("", "wl1_auth_mode_x"); %>'), decodeURIComponent('<% nvram_char_to_ascii("", "wl2_auth_mode_x"); %>')];
 		var key_nvram = [decodeURIComponent('<% nvram_char_to_ascii("", "wl0_wpa_psk"); %>'), decodeURIComponent('<% nvram_char_to_ascii("", "wl1_wpa_psk"); %>'), decodeURIComponent('<% nvram_char_to_ascii("", "wl2_wpa_psk"); %>')];
 		var smart_connect_nvram = '<% nvram_get("smart_connect_x"); %>';
 
-		var ssid_param = [decodeURIComponent('<% get_ascii_parameter("wl0_ssid"); %>'), decodeURIComponent('<% get_ascii_parameter("wl1_ssid"); %>'), decodeURIComponent('<% get_ascii_parameter("wl2_ssid"); %>')];
+		var ssid_param = [htmlEnDeCode.htmlEncode(decodeURIComponent('<% get_ascii_parameter("wl0_ssid"); %>')), htmlEnDeCode.htmlEncode(decodeURIComponent('<% get_ascii_parameter("wl1_ssid"); %>')), htmlEnDeCode.htmlEncode(decodeURIComponent('<% get_ascii_parameter("wl2_ssid"); %>'))];
 		var auth_param = [decodeURIComponent('<% get_ascii_parameter("wl0_auth_mode_x"); %>'), decodeURIComponent('<% get_ascii_parameter("wl1_auth_mode_x"); %>'), decodeURIComponent('<% get_ascii_parameter("wl2_auth_mode_x"); %>')];
 		var key_param = [decodeURIComponent('<% get_ascii_parameter("wl0_wpa_psk"); %>'), decodeURIComponent('<% get_ascii_parameter("wl1_wpa_psk"); %>'), decodeURIComponent('<% get_ascii_parameter("wl2_wpa_psk"); %>')];
 
 		var applyParam = {
 			unit: decodeURIComponent('<% get_ascii_parameter("wl_unit"); %>'),
-			ssid: decodeURIComponent('<% get_ascii_parameter("wl_ssid"); %>'),
+			ssid: htmlEnDeCode.htmlEncode(decodeURIComponent('<% get_ascii_parameter("wl_ssid"); %>')),
 			auth: decodeURIComponent('<% get_ascii_parameter("wl_auth_mode_x"); %>'),
 			key: decodeURIComponent('<% get_ascii_parameter("wl_wpa_psk"); %>'),
 			smartConnect: decodeURIComponent('<% get_ascii_parameter("smart_connect_x"); %>')
@@ -208,11 +267,13 @@ function showWlHint(updateFlag){
 			if(smart_connect_nvram == 1){
 				// Tri band steering
 				wlObj.length = 1;
-				if(based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "AC2900" || based_modelid == "RT-AC3100" || based_modelid == "BLUECAVE"){
-					wlObj[0].band = "Dual-Band Smart Connect";
-				}
-				else{
-					wlObj[0].band = "Tri-Band Smart Connect";
+				if(parent.smart_connect_support){
+					if(parent.band5g2_support){
+						wlObj[0].band = "Tri-Band Smart Connect";
+					}
+					else{
+						wlObj[0].band = "Dual-Band Smart Connect";
+					}
 				}
 			}
 			else if(smart_connect_nvram == 2){
@@ -224,11 +285,13 @@ function showWlHint(updateFlag){
 		else if(applyParam.smartConnect == 1){
 			// Tri band steering
 			wlObj.length = 1;
-			if(parent.based_modelid == "RT-AC88U" || parent.based_modelid == "RT-AC86U" || parent.based_modelid == "AC2900" || parent.based_modelid == "RT-AC3100" || parent.based_modelid == "BLUECAVE"){
-				wlObj[0].band = "Dual-Band Smart Connect";
-			}
-			else{
-				wlObj[0].band = "Tri-Band Smart Connect";
+			if(parent.smart_connect_support){
+				if(parent.band5g2_support){
+					wlObj[0].band = "Tri-Band Smart Connect";
+				}
+				else{
+					wlObj[0].band = "Dual-Band Smart Connect";
+				}
 			}
 		}
 		else if(applyParam.smartConnect == 2){
@@ -333,7 +396,7 @@ function showWlHint(updateFlag){
 		wlHintCss += "</style>";
 
 		var wlHintJs = '<script>setInterval(function(){var a;if(window.XMLHttpRequest)a=new XMLHttpRequest;else{if(!window.ActiveXObject)return!1;a=new ActiveXObject("Microsoft.XMLHTTP")}a.onreadystatechange=function(){4==a.readyState&&200==a.status&&(top.location.href="/")},a.open("GET","/httpd_check.xml",!0),a.send(null)},';
-		wlHintJs += (action_script == "reboot")?restart_time*1000:"3e3";
+		wlHintJs += (action_script == "reboot")?restart_time*1000:"5000";
 		wlHintJs += ');<\x2Fscript>';
 
 		var wlHintHtml = '';
@@ -461,10 +524,16 @@ function initial(){
 			}
 		}
 		
-		if(action_script == "reboot" || action_script.search("restart_dsl_wireless") != -1){
-			setTimeout(function(){
-				top.location.href = next_page;
-			}, restart_time*1000);
+		if(action_script == "reboot"){
+            setTimeout(function(){
+                top.location.href = next_page;
+            }, restart_time*1000);
+        }
+        else if(dsl_support){
+			//if(action_script.search("restart_dsl_wireless") != -1){
+			setTimeout(parent.startLiveUpdate, 40000);
+			setTimeout("parent.parent.document.getElementById('btn_gotoindex').style.visibility = 'visible';", 40000);
+			//}
 		}
 		else if(action_script.search("restart_subnet") !== -1){
 			setTimeout(doDetect, restart_time*1000);
@@ -501,7 +570,17 @@ function initial(){
 		setTimeout("parent.location.href='/qis/QIS_internet_account.htm';", restart_time*1000);
 	}	
 	else if(action_script == "saveNvram"){
-		return;
+		if(getflag == "finish"){
+			if(parent.document.getElementById("hidden_frame")){
+				setTimeout("parent.location.href='/qis/QIS_finish.htm';", restart_time*1000);
+			}
+			else{
+				parent.parent.showLoading(restart_time, "waiting");
+				setTimeout("showdr_advise('finish');", (restart_time+1)*1000);
+			}
+		}
+		else
+			return;
 	}
 	else if(getflag == "background"){
 		return;
@@ -512,6 +591,16 @@ function initial(){
 				showWlHint();
 				return;
 			}
+			else if(getflag == "finish"){
+				if(parent.document.getElementById("hidden_frame")){
+					setTimeout("parent.location.href='/qis/QIS_finish.htm';", restart_time*1000);  // Get
+				}
+				else{
+					parent.parent.showLoading(restart_time, "waiting");
+					setTimeout("showdr_advise('finish');", (restart_time+1)*1000);
+				}
+			}
+
 			if(current_page.indexOf(parent.ABS_INDEXPAGE) >= 0){
 				parent.showLoading(restart_time, "waiting");
 			}
@@ -544,9 +633,6 @@ function initial(){
 			else
 				setTimeout("top_delay_redirect('"+next_page+"');", restart_time*1000);
 		}
-	}
-	else if(getflag == "background"){
-			return;
 	}
 	else if(action_script == "reboot" || action_script.search("restart_subnet") !== -1){
 		parent.showLoading(restart_time);

@@ -119,7 +119,7 @@ function show_dnsfilter_list(){
 	var code = "";
 	var clientListEventData = [];
 
-	code = '<table width="100%" cellspacing="0" cellpadding="4" align="center" class="list_table" id="clientTable">';
+	code = '<table width="100%" border="1" cellspacing="0" cellpadding="4" align="center" class="list_table" id="clientTable">';
 	if(dnsfilter_rule_list_row.length < 2)
 		code += '<tr><td style="color:#FFCC00;" colspan="3"><#IPConnection_VSList_Norule#></td></tr>';
 	else{
@@ -145,7 +145,7 @@ function show_dnsfilter_list(){
 				deviceVender = "";
 			}
 			code +='<tr id="row'+i+'">';
-			code +='<td width="65%" title="'+clientName+'">';
+			code +='<td width="50%" title="'+clientName+'">';
 
 			code += '<table style="width:100%;"><tr><td style="width:40%;height:56px;border:0px;float:right;">';
 			if(clientList[clientMac] == undefined) {
@@ -177,7 +177,7 @@ function show_dnsfilter_list(){
 			code += '</td></tr></table>';
 			code += '</td>';
 
-			code +='<td width="20%">'+gen_modeselect("rule_mode"+i, rule_mode, "changeRow_main(this);")+'</td>';
+			code +='<td width="35%">'+gen_modeselect("rule_mode"+i, rule_mode, "changeRow_main(this);")+'</td>';
                         code +='<td width="15%"><input class="remove_btn" onclick="deleteRow_main(this);" value=""/></td></tr>';
 			if(validator.mac_addr(clientMac))
 				clientListEventData.push({"mac" : clientMac, "name" : "", "ip" : "", "callBack" : "DNSFilter"});
@@ -254,7 +254,7 @@ function addRow_main(upper){
 		return false;
 	}
 
-	if(!check_macaddr(document.form.rule_mac, check_hwaddr_flag(document.form.rule_mac))){
+	if(!check_macaddr(document.form.rule_mac, check_hwaddr_flag(document.form.rule_mac,'inner'))){
 		document.form.rule_mac.focus();
 		document.form.rule_mac.select();
 		return false;
@@ -328,7 +328,7 @@ function showhide_settings(state) {
 </script>
 </head>
 
-<body onload="initial();" onunload="unload_body();">
+<body onload="initial();" onunload="unload_body();" class="bg">
 <div id="TopBanner"></div>
 <div id="Loading" class="popup_bg"></div>
 
@@ -371,7 +371,7 @@ function showhide_settings(state) {
 	<tr>
 		<td bgcolor="#4D595D" valign="top">
 		<div>&nbsp;</div>
-		<div class="formfonttitle">DNS-based Filtering</div>
+		<div class="formfonttitle">DNSFilter</div>
 		<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 
 		<div id="dnsfilter_desc" style="margin-bottom:10px;">
@@ -383,10 +383,11 @@ function showhide_settings(state) {
 					<td>&nbsp;&nbsp;</td>
 					<td style="font-style: italic;font-size: 14px;">
 						<div>
-							<p>DNS-based filtering lets you protect specific LAN devices
-							against harmful online content.  The following filtering services
-							are currently supported (some of which offer multiple levels of
-							protection):
+							<p>DNSFilter allows you to protect specific LAN devices
+							against harmful online content by forcing them to use a
+							DNS server that provides filtering services.  The following
+							services are currently supported (you can also manually
+                                                        specify another DNS server through the custom entries):
 							<ul>
 								<li><a target="_blank" style="font-weight: bolder; cursor:pointer;text-decoration: underline;" href="https://cleanbrowsing.org/">CleanBrowsing</a>
 									<ul><li>Security = Malicious content
@@ -462,24 +463,24 @@ function showhide_settings(state) {
                                 </tr>
 			</table>
 
-			<table width="100%" border="1" cellspacing="0" cellpadding="4" align="center" class="FormTable_table" id="mainTable_Table">
+			<table width="100%" border="1" cellspacing="0" cellpadding="4" align="center" class="FormTable_table" style="margin-top:8px;" id="mainTable_Table">
 				<thead><tr><td colspan="3"><#ConnectedClient#>&nbsp;(<#List_limit#>&nbsp;64)</td></tr></thead>
 				<tr>
-					<th width="65%">Client MAC address</th>
-					<th width="20%">Filter Mode</th>
-					<th width="15%"><#list_add_delete#></th>
+					<th>Client MAC address</th>
+					<th>Filter Mode</th>
+					<th><#list_add_delete#></th>
 				</tr>
 				<tr>
-					<td style="border-bottom:2px solid #000;">
+					<td width="50%">
 						<input type="text" maxlength="17" style="margin-left:10px;width:255px;" autocorrect="off" autocapitalize="off" class="input_macaddr_table" name="rule_mac" onClick="hideClients_Block();" onKeyPress="return validator.isHWAddr(this,event)" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">
 						<img id="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;" onclick="pullLANIPList(this);" title="<#select_client#>">
 						<div id="ClientList_Block_PC" style="margin:0 0 0 52px" class="clientlist_dropdown"></div>
 					</td>
-					<td style="border-bottom:2px solid #000;">
+					<td width="35%">
 						<select class="input_option" name="rule_mode" id="client_modesel"></select>
 					</td>
 
-					<td style="border-bottom:2px solid #000;"><input class="add_btn" type="button" onClick="addRow_main(64)" value=""></td></tr>
+					<td width="15%"><input class="add_btn" type="button" onClick="addRow_main(64)" value=""></td>
 				</tr>
 			</table>
 			<!-- Client list -->

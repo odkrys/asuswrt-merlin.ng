@@ -770,7 +770,8 @@ function showdhcp_staticlist(){
 			code += '<td width="30%">'+ clientIP +'</td>';
 			code += '<td width="10%">';
 			code += '<input class="remove_btn" onclick="del_Row(this);" value=""/></td></tr>';
-			clientListEventData.push({"mac" : clientMac, "name" : clientName, "ip" : clientIP, "callBack" : "DHCP"});
+			if(validator.mac_addr(clientMac))
+				clientListEventData.push({"mac" : clientMac, "name" : clientName, "ip" : clientIP, "callBack" : "DHCP"});
 		});
 	}
 	code += '</table>';
@@ -933,7 +934,7 @@ function pullLANIPList(obj){
 </script>
 </head>
 
-<body onload="initial();" onunLoad="return unload_body();">
+<body onload="initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 <div id="hiddenMask" class="popup_bg">
 	<table cellpadding="5" cellspacing="0" id="dr_sweet_advise" class="dr_sweet_advise" align="center">

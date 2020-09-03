@@ -39,13 +39,9 @@
 /*#define CHECKCLEARTOWRITE() assert(ses.writepayload->len == 0 && \
 		ses.writepayload->pos == 0)*/
 
+#ifndef CHECKCLEARTOWRITE
 #define CHECKCLEARTOWRITE()
-
-/* Define this, compile with -pg and set GMON_OUT_PREFIX=gmon to get gmon
- * output when Dropbear forks. This will allow it gprof to be used.
- * It's useful to run dropbear -F, so you don't fork as much */
-/* (This is Linux specific) */
-/*#define DEBUG_FORKGPROF*/
+#endif
 
 /* A couple of flags, not usually useful, and mightn't do anything */
 
@@ -54,6 +50,7 @@
 
 /* you don't need to touch this block */
 #if DEBUG_TRACE
+extern int debug_trace;
 #define TRACE(X) dropbear_trace X;
 #define TRACE2(X) dropbear_trace2 X;
 #else /*DEBUG_TRACE*/
@@ -63,7 +60,9 @@
 
 /* To debug with GDB it is easier to run with no forking of child processes.
    You will need to pass "-F" as well. */
-/* #define DEBUG_NOFORK */
+#ifndef DEBUG_NOFORK
+#define DEBUG_NOFORK 0
+#endif
 
 
 /* For testing as non-root on shadowed systems, include the crypt of a password

@@ -82,16 +82,25 @@
 	*color:#000;
 	border:0px;
 }
+.highlight{
+	background: #78535b;
+    border: 1px solid #f06767;
+}
 </style>
 <script>
 time_day = uptimeStr.substring(5,7);//Mon, 01 Aug 2011 16:25:44 +0800(1467 secs since boot....
 time_mon = uptimeStr.substring(9,12);
 time_time = uptimeStr.substring(18,20);
 dstoffset = '<% nvram_get("time_zone_dstoff"); %>';
+cfg_master = '<% nvram_get("cfg_master"); %>';
+ncb_enable = '<% nvram_get("ncb_enable"); %>';
+wifison = '<% nvram_get("wifison_ready"); %>';
 
 var orig_shell_timeout_x = Math.floor(parseInt("<% nvram_get("shell_timeout"); %>")/60);
 var orig_enable_acc_restriction = '<% nvram_get("enable_acc_restriction"); %>';
 var orig_restrict_rulelist_array = [];
+if((ntpd_support) && (isSwMode('rt')))
+	var orig_ntpd_server_redir = '<% nvram_get("ntpd_server_redir"); %>';
 var restrict_rulelist_array = [];
 var accounts = [<% get_all_accounts(); %>][0];
 for(var i=0; i<accounts.length; i++){
@@ -102,8 +111,6 @@ if(accounts.length == 0)
 
 var header_info = [<% get_header_info(); %>];
 var host_name = header_info[0].host;
-if(host_name.split(":").length > 1)
-	host_name = host_name.split(":")[0];
 if(tmo_support)
 	var theUrl = "cellspot.router";	
 else
@@ -123,7 +130,12 @@ else
 var httpd_cert_info = [<% httpd_cert_info(); %>][0];
 var uploaded_cert = false;
 
-function initial(){	
+var le_enable = '<% nvram_get("le_enable"); %>';
+var orig_http_enable = '<% nvram_get("http_enable"); %>';
+
+var captcha_support = isSupport("captcha");
+
+function initial(){
 	//parse nvram to array
 	var parseNvramToArray = function(oriNvram) {
 		var parseArray = [];
@@ -144,8 +156,8 @@ function initial(){
 	restrict_rulelist_array = JSON.parse(JSON.stringify(orig_restrict_rulelist_array));
 
 	show_menu();
-	//	https://www.asus.com/us/support/FAQ/1034294
-	httpApi.faqURL("faq", "1034294", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("1034294", function(url){document.getElementById("faq").href=url;});
+	httpApi.faqURL("1037370", function(url){document.getElementById("ntp_faq").href=url;});
 	show_http_clientlist();
 	display_spec_IP(document.form.http_client.value);
 
@@ -176,6 +188,13 @@ function initial(){
 	if(svc_ready == "0")
 		document.getElementById('svc_hint_div').style.display = "";
 
+	if(!dualWAN_support) {
+		$("#network_monitor_tr").hide();
+		document.form.dns_probe_chk.checked = false;
+		document.form.wandog_enable_chk.checked = false;
+	}
+	show_network_monitoring();
+
 	if(!HTTPS_support){
 		document.getElementById("http_auth_table").style.display = "none";
 	}
@@ -188,53 +207,47 @@ function initial(){
 	if (lanport == '') lanport = '80';
 	change_url(lanport, 'http_lan')
 
-	if(wifi_tog_btn_support || wifi_hw_sw_support || sw_mode == 2 || sw_mode == 4){		// wifi_tog_btn && wifi_hw_sw && hide WPS button behavior under repeater mode
-			if(cfg_wps_btn_support){
-				document.getElementById('turn_WPS').style.display = "";
-				document.form.btn_ez_radiotoggle[1].disabled = true;
-				document.getElementById('turn_WiFi').style.display = "none";
-				document.getElementById('turn_WiFi_str').style.display = "none";
-				document.getElementById('turn_LED').style.display = "";
-				if(document.form.btn_ez_radiotoggle[2].checked == false)
-					document.form.btn_ez_radiotoggle[0].checked = true;
-			}
-			else{
-				document.form.btn_ez_radiotoggle[0].disabled = true;
-				document.form.btn_ez_radiotoggle[1].disabled = true;
-				document.form.btn_ez_radiotoggle[2].disabled = true;
-				document.getElementById('btn_ez_radiotoggle_tr').style.display = "none";
-			}
+	var WPSArray = ['WPS'];
+	var ez_mode = httpApi.nvramGet (['btn_ez_mode']).btn_ez_mode;
+	var ez_radiotoggle = httpApi.nvramGet (['btn_ez_radiotoggle']).btn_ez_radiotoggle;
+	if(!wifi_tog_btn_support && !wifi_hw_sw_support && sw_mode != 2 && sw_mode != 4){
+		WPSArray.push('WiFi');
 	}
-	else{
-			
-			document.getElementById('btn_ez_radiotoggle_tr').style.display = "";
-			if(cfg_wps_btn_support){
-				document.getElementById('turn_WPS').style.display = "";
-				document.getElementById('turn_WiFi').style.display = "";
-				document.getElementById('turn_LED').style.display = "";
-				if(document.form.btn_ez_radiotoggle[1].checked == false && document.form.btn_ez_radiotoggle[2].checked == false)
-					document.form.btn_ez_radiotoggle[0].checked = true;
-			}
-			else{
-				document.getElementById('turn_WPS').style.display = "";
-				document.getElementById('turn_WiFi').style.display = "";
-				document.getElementById('turn_LED').disabled = true;
-				document.getElementById('turn_LED').style.display = "none";
-				document.getElementById('turn_LED_str').style.display = "none";
-				if(document.form.btn_ez_radiotoggle[1].checked == false)
-					document.form.btn_ez_radiotoggle[0].checked = true;
-			}
+
+	if(cfg_wps_btn_support){
+		WPSArray.push('LED');
+	}
+
+	if(WPSArray.length > 1){
+		$('#btn_ez_radiotoggle_tr').show();
+		for(i=0;i<WPSArray.length;i++){
+			$('#btn_ez_' + WPSArray[i]).show();
+		}
+
+		if(ez_radiotoggle == '1' && ez_mode == '0'){	// WiFi
+			document.form.btn_ez_radiotoggle[1].checked = true;
+		}
+		else if(ez_radiotoggle == '0' && ez_mode == '1'){	// LED
+			document.form.btn_ez_radiotoggle[2].checked = true;
+		}
+		else{	// WPS
+			document.form.btn_ez_radiotoggle[0].checked = true;
+		}
 	}
 
 	/* MODELDEP */
-	if(based_modelid == "AC2900"){	//MODELDEP: AC2900(RT-AC86U)
-		document.form.btn_ez_radiotoggle[0].disabled = true;
-		document.form.btn_ez_radiotoggle[1].disabled = true;
-		document.form.btn_ez_radiotoggle[2].disabled = true;
-		document.getElementById('btn_ez_radiotoggle_tr').style.display = "none";
+	if(wifison == 1){
+		if(sw_mode == 1 || (sw_mode == 3 && cfg_master == 1))
+			document.getElementById("sw_mode_radio_tr").style.display = "";
+		if(based_modelid == "MAP-AC2200")
+			document.getElementById("ncb_enable_option_tr").style.display = "";
 	}
 	
 	if(sw_mode != 1){
+		document.form.sshd_enable.remove(2);
+		if (ssh_support && ("<% nvram_get("sshd_enable"); %>" == "1"))
+			document.form.sshd_enable.selectedIndex = 1;
+
 		document.getElementById('misc_http_x_tr').style.display = "none";
 		hideport(0);
 		document.form.misc_http_x.disabled = true;
@@ -262,7 +275,7 @@ function initial(){
 	}
 
 	/* MODELDEP */
-//	if(tmo_support || based_modelid == "AC2900"){	//MODELDEP: AC2900(RT-AC86U)
+//	if(tmo_support){
 	if(1){
 		document.getElementById("telnet_tr").style.display = "none";
 		document.form.telnetd_enable[0].disabled = true;
@@ -272,9 +285,23 @@ function initial(){
 		document.getElementById("telnet_tr").style.display = "";
 		document.form.telnetd_enable[0].disabled = false;
 		document.form.telnetd_enable[1].disabled = false;
+		telnet_enable(httpApi.nvramGet(["telnetd_enable"]).telnetd_enable);
 	}
+
+	if(powerline_support)
+		document.getElementById("plc_sleep_tr").style.display = "";
+
 	// load shell_timeout_x
 	document.form.shell_timeout_x.value = orig_shell_timeout_x;
+	if(based_modelid == "GT-AXY16000" || based_modelid == "RT-AX89U"){
+		var pwrsave_desc = new Array();
+		var pwrsave_value = new Array();
+		pwrsave_desc = [ "<#Auto#>", "<#usb_Power_Save#>" ];
+		pwrsave_value = [1,2];
+		if(document.form.pwrsave_mode.value != '1' && document.form.pwrsave_mode.value != '2')
+			document.form.pwrsave_mode.value = '1';
+		add_options_x2(document.form.pwrsave_mode, pwrsave_desc, pwrsave_value, document.form.pwrsave_mode.value);
+	}
 
 	if(pwrsave_support){
 		document.getElementById("pwrsave_tr").style.display = "";
@@ -312,6 +339,17 @@ function initial(){
 		if (document.form.usb_idle_exclude.value.indexOf("i") != -1)
 			document.form.usb_idle_exclude_i.checked = true;
 	}
+
+	if ( (ntpd_support) && (isSwMode('rt')) )
+		showhide("ntpd_redir_tr", '<% nvram_get("ntpd_enable"); %>');
+	else {
+		showhide("ntpd_server_tr", 0);
+		showhide("ntpd_redir_tr", 0);
+	}
+
+	$("#https_download_cert").css("display", (le_enable == "0" && orig_http_enable != "0")? "": "none");
+
+	$("#login_captcha_tr").css("display", captcha_support? "": "none");
 }
 
 var time_zone_tmp="";
@@ -337,6 +375,8 @@ function applyRule(){
 
 		var restart_firewall_flag = false;
 		var restart_httpd_flag = false;
+		var ncb_enable_option_flag = false;
+		var sw_mode_radio_flag = false;
 	
 		//parse array to nvram
 		var old_fw_tmp_value = ""; //for old version fw
@@ -378,7 +418,8 @@ function applyRule(){
 			return false;
 		}
 
-		if((document.form.enable_acc_restriction.value != orig_enable_acc_restriction) || (restrict_rulelist_array.toString() != orig_restrict_rulelist_array.toString()))
+//		if((document.form.enable_acc_restriction.value != orig_enable_acc_restriction) || (restrict_rulelist_array.toString() != orig_restrict_rulelist_array.toString())
+//			|| (document.form.ntpd_server_redir.value != orig_ntpd_server_redir) )
 			restart_firewall_flag = true;
 
 		if(document.form.http_passwd2.value.length > 0){
@@ -399,7 +440,7 @@ function applyRule(){
 		}
 
 		// shell_timeout save min to sec
-		document.form.shell_timeout.value = parseInt(document.form.shell_timeout_x.value)*60;		
+		document.form.shell_timeout.value = parseInt(document.form.shell_timeout_x.value)*60;
 		
 		if(document.form.misc_http_x[1].checked == true){
 				document.form.misc_httpport_x.disabled = true;
@@ -457,27 +498,53 @@ function applyRule(){
 				}
 			}
 		}
-		
-		if(document.form.btn_ez_radiotoggle[1].disabled == false && document.form.btn_ez_radiotoggle[1].checked == true){
-				document.form.btn_ez_radiotoggle.value=1;
-				document.form.btn_ez_mode.value=0;
+
+		if(ncb_enable != "" && document.form.ncb_enable_option.value != ncb_enable){
+			document.form.ncb_enable.value = document.form.ncb_enable_option.value;
+			ncb_enable_option_flag = true;
 		}
-		else if(document.form.btn_ez_radiotoggle[2].disabled == false && document.form.btn_ez_radiotoggle[2].checked == true){
-				document.form.btn_ez_radiotoggle.value=0;
-				document.form.btn_ez_mode.value=1;
+
+		if((document.form.sw_mode_radio.value==1 && sw_mode!=3) ||
+			(document.form.sw_mode_radio.value==0 && sw_mode==3) ){
+			if (sw_mode == 1) document.form.sw_mode.value = 3;
+			else if (sw_mode == 3) document.form.sw_mode.value = 1;
+
+			sw_mode_radio_flag = true;
 		}
-		else{
-				document.form.btn_ez_radiotoggle.value=0;
-				document.form.btn_ez_mode.value=0;
+
+		if(document.form.btn_ez_radiotoggle[1].checked){	// WiFi
+			document.form.btn_ez_radiotoggle.value = 1;
+			document.form.btn_ez_mode.value = 0;
+		}
+		else if(document.form.btn_ez_radiotoggle[2].checked){	// LED
+			document.form.btn_ez_radiotoggle.value = 0;
+			document.form.btn_ez_mode.value = 1;
+		}
+		else{	// WPS
+			document.form.btn_ez_radiotoggle.value = 0;
+			document.form.btn_ez_mode.value = 0;
 		}
 		
 		if(reboot_schedule_support){
 			updateDateTime();
 		}
 
+		if(document.form.wandog_enable_chk.checked)
+			document.form.wandog_enable.value = "1";
+		else
+			document.form.wandog_enable.value = "0";
+
+		if(document.form.dns_probe_chk.checked)
+			document.form.dns_probe.value = "1";
+		else
+			document.form.dns_probe.value = "0";
+
+		if(document.form.https_lanport.value != '<% nvram_get("https_lanport"); %>')
+			alert('<#Change_HttpsLanport_Hint#>');
+
 		showLoading();
 
-		var action_script_tmp = "restart_time;restart_upnp;";
+		var action_script_tmp = "restart_time;restart_leds;";
 
 		if(hdspindown_support) {
 			var excluded = "";
@@ -519,6 +586,17 @@ function applyRule(){
 
 		if(restart_firewall_flag)
 			action_script_tmp += "restart_firewall;";
+		else
+			action_script_tmp += "restart_upnp;";	// Normally done by restart_firewall
+
+
+		if(ncb_enable_option_flag)
+			action_script_tmp += "restart_bhblock;";
+
+		if(sw_mode_radio_flag) {
+			action_script_tmp += "restart_chg_swmode;";
+			document.form.action_wait.value = 210;
+		}
 
 		if(pwrsave_support)
 			action_script_tmp += "pwrsave;";
@@ -527,6 +605,9 @@ function applyRule(){
 			action_script_tmp = "reboot";
 			document.form.action_wait.value = httpApi.hookGet("get_default_reboot_time");
 		}
+
+		if (getRadioItemCheck(document.form.ntpd_enable) != '<% nvram_get("ntpd_enable"); %>')
+			action_script_tmp += "restart_dnsmasq;";
 
 		document.form.action_script.value = action_script_tmp;
 		document.form.submit();
@@ -544,7 +625,7 @@ function validForm(){
 		return false;
 	}
 	else{
-		var alert_str = validator.hostName(document.form.http_username);
+		var alert_str = validator.account_name(document.form.http_username);
 
 		if(alert_str != ""){
 			showtext(document.getElementById("alert_msg1"), alert_str);
@@ -585,7 +666,14 @@ function validForm(){
 		document.form.http_passwd2.focus();
 		document.form.http_passwd2.select();
 		return false;
-	}	
+	}
+
+	if(document.form.http_passwd2.value.length > 16){
+		showtext(document.getElementById("alert_msg2"),"* <#JS_max_password#>");
+		document.form.http_passwd2.focus();
+		document.form.http_passwd2.select();
+		return false;
+	}
 
 	if(document.form.http_passwd2.value != document.form.v_password2.value){
 		showtext(document.getElementById("alert_msg2"),"* <#File_Pop_content_alert_desc7#>");
@@ -636,7 +724,7 @@ function validForm(){
 	if(hdspindown_support) {
 		if($('select[name="usb_idle_enable"]').val() == 1) {
 			$('input[name="usb_idle_timeout"]').prop("disabled", false);
-			if (!validator.range($('input[name="usb_idle_timeout"]')[0], 60, 3600))
+			if (!validator.range($('input[name="usb_idle_timeout"]')[0], 60, 9999))
 				return false;
 		}
 		else {
@@ -659,8 +747,21 @@ function validForm(){
 		return false;
 	}
 
+	if(document.form.sshd_enable.value != 0){
+		if (!validator.range(document.form.sshd_port, 1, 65535))
+			return false;
+		else if(myisPortConflict(document.form.sshd_port.value, "ssh")){
+			alert(myisPortConflict(document.form.sshd_port.value, "ssh"));
+			document.form.sshd_port.focus();
+			return false;
+		}
+	}
+	else{
+		document.form.sshd_port.disabled = true;
+	}
+
 	if (!validator.range(document.form.http_lanport, 1, 65535))
-		return false;
+		/*return false;*/ document.form.http_lanport = 80;
 	if (HTTPS_support && !validator.range(document.form.https_lanport, 1, 65535) && !tmo_support)
 		return false;
 
@@ -673,16 +774,19 @@ function validForm(){
 	else{
 		document.form.misc_httpport_x.value = '<% nvram_get("misc_httpport_x"); %>';
 		document.form.misc_httpsport_x.value = '<% nvram_get("misc_httpsport_x"); %>';
-	}	
-
-	if(document.form.sshd_enable.value != 0){
-		if (!validator.range(document.form.sshd_port, 1, 65535))
-			return false;
-	}
-	else{
-		document.form.sshd_port.disabled = true;
 	}
 
+/* redundant
+	if(document.form.sshd_port.value == document.form.https_lanport.value){
+		alert("<#SSH_HttpsLanPort_Conflict_Hint#>");
+		$("#sshd_port").addClass("highlight");
+		$("#port_conflict_sshdport").show();
+		$("#https_lanport_input").addClass("highlight");
+		$("#port_conflict_httpslanport").show();
+		document.form.sshd_port.focus();
+		return false;
+	}
+*/
 	if(!validator.rangeAllowZero(document.form.shell_timeout_x, 10, 999, orig_shell_timeout_x))
 		return false;
 
@@ -690,32 +794,37 @@ function validForm(){
 		alert("You must configure at least one SSH authentication method!");
 		return false;
 	}
+
+/* HTTP WAN access is no longer allowed */
 /*
 	if(!document.form.misc_httpport_x.disabled &&
-			isPortConflict(document.form.misc_httpport_x.value)){
-		alert(isPortConflict(document.form.misc_httpport_x.value));
+			myisPortConflict(document.form.misc_httpport_x.value, "http")){
+		alert(isPortConflict(document.form.misc_httpport_x.value, "http"));
 		document.form.misc_httpport_x.focus();
+		document.form.misc_httpport_x.select();
 		return false;
 	}
 */
-	else if(!document.form.misc_httpsport_x.disabled &&
-			isPortConflict(document.form.misc_httpsport_x.value) && HTTPS_support){
-		alert(isPortConflict(document.form.misc_httpsport_x.value));
+	if(!document.form.misc_httpsport_x.disabled &&
+			myisPortConflict(document.form.misc_httpsport_x.value, "https") && HTTPS_support){
+		alert(myisPortConflict(document.form.misc_httpsport_x.value, "https"));
 		document.form.misc_httpsport_x.focus();
+		document.form.misc_httpsport_x.select();
 		return false;
 	}
-	else if(isPortConflict(document.form.https_lanport.value) && HTTPS_support && !tmo_support){
-		alert(isPortConflict(document.form.https_lanport.value));
+	else if(myisPortConflict(document.form.http_lanport.value, "http")){
+		alert(isPortConflict(document.form.http_lanport.value, "http"));
+		document.form.http_lanport.focus();
+		document.form.http_lanport.select();
+		return false;
+	}
+	else if(myisPortConflict(document.form.https_lanport.value, "https") && HTTPS_support){
+		alert(isPortConflict(document.form.https_lanport.value, "https"));
 		document.form.https_lanport.focus();
+		document.form.https_lanport.select();
 		return false;
 	}
-/*
-	else if(document.form.misc_httpsport_x.value == document.form.misc_httpport_x.value && HTTPS_support){
-		alert("<#https_port_conflict#>");
-		document.form.misc_httpsport_x.focus();
-		return false;
-	}
-*/
+
 	else if(!validator.rangeAllowZero(document.form.http_autologout, 10, 999, '<% nvram_get("http_autologout"); %>'))
 		return false;
 
@@ -745,7 +854,7 @@ function validForm(){
 		}
 
 		if(WebUI_selected <= 0){
-			alert("Please select at least one Web UI of Access Type and enable it in [Allow only specified IP address]");   //Untranslated 2017/08
+			alert("<#JS_access_type#> <#System_login_specified_Iplist_enable#>");
 			document.form.http_client_ip_x_0.focus();
 			return false;
 		}
@@ -802,7 +911,7 @@ var timezones = [
 	["UTC4_2",	"(GMT-04:00) <#TZ18_1#>"],
 	["UTC4DST_2",	"(GMT-04:00) <#TZ19#>"],
 	["NST3.30DST",	"(GMT-03:30) <#TZ20#>"],
-	["EBST3DST_1",	"(GMT-03:00) <#TZ21#>"],
+	["EBST3",	"(GMT-03:00) <#TZ21#>"],	//EBST3DST_1
 	["UTC3",	"(GMT-03:00) <#TZ22#>"],
 	["EBST3DST_2",	"(GMT-03:00) <#TZ23#>"],
 	["UTC2",	"(GMT-02:00) <#TZ24#>"],
@@ -833,13 +942,13 @@ var timezones = [
 	["UTC-3_1",	"(GMT+03:00) <#TZ46#>"],
 	["UTC-3_2",	"(GMT+03:00) <#TZ47#>"],
 	["UTC-3_3",	"(GMT+03:00) <#TZ40_1#>"],
-	["UTC-3_4",	"(GMT+03:00) <#TZ44#>"],
-	["UTC-3_5",	"(GMT+03:00) <#TZ45#>"],
+	["UTC-3_4",	"(GMT+03:00) <#TZ44#>"],	
 	["IST-3",	"(GMT+03:00) <#TZ48#>"],
 	["UTC-3_6",	"(GMT+03:00) <#TZ48_1#>"],
 	["UTC-3.30DST",	"(GMT+03:30) <#TZ49#>"],	
 	["UTC-4_1",	"(GMT+04:00) <#TZ50#>"],
 	["UTC-4_5",	"(GMT+04:00) <#TZ50_2#>"],
+	["UTC-4_7",	"(GMT+04:00) <#TZ45#>"],	//UTC-3_5
 	["UTC-4_4",	"(GMT+04:00) <#TZ50_1#>"],
 	["UTC-4_6",	"(GMT+04:00) <#TZ51#>"],
 	["UTC-4.30",	"(GMT+04:30) <#TZ52#>"],
@@ -954,7 +1063,7 @@ var dstoff_end_m,dstoff_end_w,dstoff_end_d,dstoff_end_h;
 function parse_dstoffset(){     //Mm.w.d/h,Mm.w.d/h
 	if(dstoffset){
 		var dstoffset_startend = dstoffset.split(",");
-    			
+			
 		if(dstoffset_startend[0] != "" && dstoffset_startend[0] != undefined){
 			var dstoffset_start = trim(dstoffset_startend[0]);
 			var dstoff_start = dstoffset_start.split(".");
@@ -1038,6 +1147,22 @@ function hide_https_lanport(_value){
 	}
 	else{
 		document.getElementById("https_access_page").style.display = 'none';
+	}
+
+
+	if(le_enable == "0" && _value != "0"){
+		$("#https_download_cert").css("display", "");
+		if(orig_http_enable == "0"){
+			$("#download_cert_btn").css("display", "none");
+			$("#download_cert_desc").css("display", "");
+		}
+		else{
+			$("#download_cert_btn").css("display", "");
+			$("#download_cert_desc").css("display", "none");
+		}
+	}
+	else{
+		$("#https_download_cert").css("display", "none");
 	}
 }
 
@@ -1159,7 +1284,7 @@ function addRow(obj, upper){
 			access_type_value += parseInt($(this).val());
 	});	
 	if(access_type_value == 0) {
-		alert("Please select at least one Access Type.");/*untranslated*/
+		alert("<#JS_access_type#>");
 		return false;
 	}
 	else{
@@ -1280,7 +1405,7 @@ function enable_wan_access(flag){
 }
 
 function check_wan_access(http_enable){
-	if(http_enable == "0" && document.form.misc_http_x[0].checked == true){	//While Accesss from WAN enabled, not allow to set HTTP only
+	if(sw_mode == "1" && http_enable == "0" && document.form.misc_http_x[0].checked == true){	//While Accesss from WAN enabled, not allow to set HTTP only
 		alert("When \"Web Access from WAN\" is enabled, HTTPS must be enabled.");
 		document.form.http_enable.selectedIndex = 2;
 		hide_https_lanport(document.form.http_enable.value);
@@ -1303,16 +1428,6 @@ function change_url(num, flag){
 
 		document.getElementById("wan_access_url").innerHTML = "<#https_access_url#> ";
 		document.getElementById("wan_access_url").innerHTML += "<a href=\"https://"+host_addr+":"+https_wanport+"\" target=\"_blank\" style=\"color:#FC0;text-decoration: underline; font-family:Lucida Console;\">http<span>s</span>://"+host_addr+"<span>:"+https_wanport+"</span></a>";		
-	}
-	else if(flag = 'http_lan'){
-		var http_lanport_num_new = num;
-		if (http_lanport_num_new != 80)
-			var lanport_str = ":"+http_lanport_num_new;
-		else
-			var lanport_str = "";
-
-		document.getElementById("http_access_page").innerHTML = "<#https_access_url#> ";
-                document.getElementById("http_access_page").innerHTML += "<a href=\"http://"+theUrl+lanport_str+"\" target=\"_blank\" style=\"color:#FC0;text-decoration: underline; font-family:Lucida Console;\">http://"+theUrl+lanport_str+"</a>";
 	}
 }
 
@@ -1358,6 +1473,7 @@ function check_sshd_enable(obj_value){
 	document.getElementById("sshd_bfp_field").style.display = state;
 	document.getElementById("sshd_password_tr").style.display = state;
 	document.getElementById("sshd_port_tr").style.display = state;
+	document.getElementById('SSH_Port_Suggestion1').style.display = state;
 }
 
 /*function sshd_remote_access(obj_value){
@@ -1378,6 +1494,9 @@ function check_sshd_enable(obj_value){
 	}
 
 }*/
+function telnet_enable(flag){
+	document.getElementById('SSH_Port_Suggestion2').style.display = (flag == 1) ? "":"none";
+}
 
 function display_spec_IP(flag){
 	if(flag == 0){
@@ -1558,10 +1677,148 @@ function warn_jffs_format(){
 	alert(msg);
 }
 
+function show_network_monitoring(){
+	var orig_dns_probe = httpApi.nvramGet(["dns_probe"]).dns_probe;
+	var orig_wandog_enable = httpApi.nvramGet(["wandog_enable"]).wandog_enable;
+
+	appendMonitorOption(document.form.dns_probe_chk);
+	appendMonitorOption(document.form.wandog_enable_chk);
+	setTimeout("showPingTargetList();", 500);
+}
+
+function appendMonitorOption(obj){
+	if(obj.name == "wandog_enable_chk"){
+		if(obj.checked){
+			document.getElementById("ping_tr").style.display = "";
+			inputCtrl(document.form.wandog_target, 1);
+		}
+		else{
+			document.getElementById("ping_tr").style.display = "none";
+			inputCtrl(document.form.wandog_target, 0);
+		}
+	}
+	else if(obj.name == "dns_probe_chk"){
+		if(obj.checked){
+			document.getElementById("probe_host_tr").style.display = "";
+			document.getElementById("probe_content_tr").style.display = "";
+			inputCtrl(document.form.dns_probe_host, 1);
+			inputCtrl(document.form.dns_probe_content, 1);
+		}
+		else{
+			document.getElementById("probe_host_tr").style.display = "none";
+			document.getElementById("probe_content_tr").style.display = "none";
+			inputCtrl(document.form.dns_probe_host, 0);
+			inputCtrl(document.form.dns_probe_content, 0);
+		}
+	}
+}
+
+var isPingListOpen = 0;
+function showPingTargetList(){
+	var ttc = httpApi.nvramGet(["territory_code"]).territory_code;
+	if(ttc.search("CN") >= 0 || ttc.search("GD") >= 0 || ttc.search("CT") >= 0){
+		var APPListArray = [
+			["Baidu", "www.baidu.com"], ["QQ", "www.qq.com"], ["Taobao", "www.taobao.com"]
+		];
+	}
+	else{
+		var APPListArray = [
+			["Google ", "www.google.com"], ["Facebook", "www.facebook.com"], ["Youtube", "www.youtube.com"], ["Yahoo", "www.yahoo.com"],
+			["Baidu", "www.baidu.com"], ["Wikipedia", "www.wikipedia.org"], ["Windows Live", "www.live.com"], ["QQ", "www.qq.com"],
+			["Amazon", "www.amazon.com"], ["Twitter", "www.twitter.com"], ["Taobao", "www.taobao.com"], ["Blogspot", "www.blogspot.com"],
+			["Linkedin", "www.linkedin.com"], ["Sina", "www.sina.com"], ["eBay", "www.ebay.com"], ["MSN", "msn.com"], ["Bing", "www.bing.com"],
+			["Яндекс", "www.yandex.ru"], ["WordPress", "www.wordpress.com"], ["ВКонтакте", "www.vk.com"]
+		];
+	}
+
+	var code = "";
+	for(var i = 0; i < APPListArray.length; i++){
+		code += '<a><div onclick="setPingTarget(\''+APPListArray[i][1]+'\');"><strong>'+APPListArray[i][0]+'</strong></div></a>';
+	}
+	code +='<!--[if lte IE 6.5]><iframe class="hackiframe2"></iframe><![endif]-->';
+	document.getElementById("TargetList_Block_PC").innerHTML = code;
+}
+
+function setPingTarget(ipaddr){
+	document.form.wandog_target.value = ipaddr;
+	hidePingTargetList();
+}
+
+function hidePingTargetList(){
+	document.getElementById("ping_pull_arrow").src = "/images/arrow-down.gif";
+	document.getElementById('TargetList_Block_PC').style.display='none';
+	isPingListOpen = 0;
+}
+
+function pullPingTargetList(obj){
+	if(isPingListOpen == 0){
+		obj.src = "/images/arrow-top.gif"
+		document.getElementById("TargetList_Block_PC").style.display = 'block';
+		document.form.wandog_target.focus();
+		isPingListOpen = 1;
+	}
+	else
+		hidePingTargetList();
+}
+
+function reset_portconflict_hint(){
+	if($("#sshd_port").hasClass("highlight"))
+		$("#sshd_port").removeClass("highlight");
+	if($("#https_lanport_input").hasClass("highlight"))
+		$("#https_lanport_input").removeClass("highlight");
+	$("#port_conflict_sshdport").hide();
+	$("#port_conflict_httpslanport").hide();
+}
+
+function myisPortConflict(_val, service){
+	var str = "(" + _val + ") <#portConflictHint#>: ";
+
+/* Check services on System page - through form */
+	if (service != "ssh" && _val == document.form.sshd_port.value) {
+		str = str + "SSH.";
+		return str;
+	}
+	else if (service != "http" && _val == document.form.http_lanport.value) {
+		str = str + "HTTP LAN port.";
+		return str;
+	}
+	else if (service != "https" && _val == document.form.https_lanport.value) {
+		str = str + "HTTPS LAN port.";
+		return str;
+	}
+/* Check services on other pages - through nvram */
+	else if(_val == '<% nvram_get("dm_http_port"); %>'){
+		str = str + "<#DM_title#>.";
+		return str;
+		}
+	else if(_val == '<% nvram_get("webdav_http_port"); %>'){
+		str = str + "Cloud Disk.";
+		return str;
+	}
+	else if(_val == '<% nvram_get("webdav_https_port"); %>'){
+		str = str + "Cloud Disk.";
+		return str;
+	}
+	else if(_val == '<% nvram_get("vpn_server1_port"); %>'){
+		str = str + "OpenVPN Server 1.";
+		return str;
+	}
+	else if(_val == '<% nvram_get("vpn_server2_port"); %>'){
+		str = str + "OpenVPN Server 2.";
+		return str;
+	}
+	else
+		return false;
+}
+
+
+function save_cert_key(){
+	location.href = "cert.tar";
+}
 </script>
 </head>
 
-<body onload="initial();" onunLoad="return unload_body();">
+<body onload="initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 
 <div id="Loading" class="popup_bg"></div>
@@ -1592,6 +1849,10 @@ function warn_jffs_format(){
 <input type="hidden" name="reboot_schedule_enable" value="<% nvram_get("reboot_schedule_enable"); %>">
 <input type="hidden" name="usb_idle_exclude" value="<% nvram_get("usb_idle_exclude"); %>">
 <input type="hidden" name="shell_timeout" value="<% nvram_get("shell_timeout"); %>">
+<input type="hidden" name="sw_mode" value="<% nvram_get("sw_mode"); %>">
+<input type="hidden" name="ncb_enable" value="<% nvram_get("ncb_enable"); %>">
+<input type="hidden" name="dns_probe" value="<% nvram_get("dns_probe"); %>">
+<input type="hidden" name="wandog_enable" value="<% nvram_get("wandog_enable"); %>">
 
 <table class="content" align="center" cellpadding="0" cellspacing="0">
   <tr>
@@ -1634,7 +1895,7 @@ function warn_jffs_format(){
 				<tr>
 					<th width="40%"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,4)"><#PASS_new#></a></th>
 					<td>
-						<input type="password" autocomplete="new-password" name="http_passwd2" tabindex="2" onKeyPress="return validator.isString(this, event);" onkeyup="chkPass(this.value, 'http_passwd');" onpaste="setTimeout('paste_password();', 10)" class="input_18_table" maxlength="16" onBlur="clean_scorebar(this);" autocorrect="off" autocapitalize="off"/>
+						<input type="password" autocomplete="new-password" name="http_passwd2" tabindex="2" onKeyPress="return validator.isString(this, event);" onkeyup="chkPass(this.value, 'http_passwd');" onpaste="setTimeout('paste_password();', 10)" class="input_18_table" maxlength="17" onBlur="clean_scorebar(this);" autocorrect="off" autocapitalize="off"/>
 						&nbsp;&nbsp;
 						<div id="scorebarBorder" style="margin-left:180px; margin-top:-25px; display:none;" title="<#LANHostConfig_x_Password_itemSecur#>">
 							<div id="score"></div>
@@ -1645,7 +1906,7 @@ function warn_jffs_format(){
 				<tr>
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,4)"><#PASS_retype#></a></th>
 					<td>
-						<input type="password" autocomplete="new-password" name="v_password2" tabindex="3" onKeyPress="return validator.isString(this, event);" onpaste="setTimeout('paste_password();', 10)" class="input_18_table" maxlength="16" autocorrect="off" autocapitalize="off"/>
+						<input type="password" autocomplete="new-password" name="v_password2" tabindex="3" onKeyPress="return validator.isString(this, event);" onpaste="setTimeout('paste_password();', 10)" class="input_18_table" maxlength="17" autocorrect="off" autocapitalize="off"/>
 						<div style="margin:-25px 0px 5px 175px;"><input type="checkbox" name="show_pass_1" onclick="pass_checked(document.form.http_passwd2);pass_checked(document.form.v_password2);"><#QIS_show_pass#></div>
 						<span id="alert_msg2" style="color:#FC0;margin-left:8px;display:inline-block;"></span>
 					
@@ -1670,6 +1931,13 @@ function warn_jffs_format(){
 					<td>
 						<input type="radio" name="jffs2_scripts" value="1" <% nvram_match("jffs2_scripts", "1", "checked"); %>><#checkbox_Yes#>
 						<input type="radio" name="jffs2_scripts" value="0" <% nvram_match("jffs2_scripts", "0", "checked"); %>><#checkbox_No#>
+					</td>
+				</tr>
+				<tr id="login_captcha_tr" style="display:none">
+					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,13)">Enable Login Captcha</a></th>
+					<td>
+						<input type="radio" value="1" name="captcha_enable" <% nvram_match("captcha_enable", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" value="0" name="captcha_enable" <% nvram_match("captcha_enable", "0", "checked"); %>><#checkbox_No#>
 					</td>
 				</tr>
 			</table>
@@ -1712,7 +1980,7 @@ function warn_jffs_format(){
 					</td>
 				</tr>
 				<tr id="reduce_usb3_tr" style="display:none">
-					<th width="40%"><a class="hintstyle" href="javascript:void(0);" onclick="openHint(3, 29)">USB Mode</a></th>
+					<th width="40%"><a class="hintstyle" href="javascript:void(0);" onclick="openHint(3, 29)"><#select_usb_mode#></a></th>
 					<td>
 						<select class="input_option" name="usb_usb3" onchange="enableUsbMode(this.value);">
 							<option value="0" <% nvram_match("usb_usb3", "0", "selected"); %>>USB 2.0</option>
@@ -1721,8 +1989,8 @@ function warn_jffs_format(){
 						<script>
 							var needReboot = false;
 
-							if( based_modelid == "DSL-AC68U" || based_modelid == "RT-AC3200" || based_modelid == "RT-AC87U" || based_modelid == "RT-AC68U" || based_modelid == "RT-AC68A" || based_modelid == "RT-AC56S" || based_modelid == "RT-AC56U" || based_modelid == "RT-AC55U" || based_modelid == "RT-AC55UHP" || based_modelid == "RT-N18U" || based_modelid == "RT-AC88U" || based_modelid == "RT-AC86U" || based_modelid == "AC2900" || based_modelid == "RT-AC3100" || based_modelid == "RT-AC5300" || based_modelid == "RP-AC68U" || based_modelid == "RT-AC58U" || based_modelid == "RT-AC82U" || based_modelid == "MAP-AC3000" || based_modelid == "RT-AC85U" || based_modelid == "RT-AC65U" || based_modelid == "4G-AC68U" || based_modelid == "BLUECAVE" || based_modelid == "RT-AC88Q" || based_modelid == "RT-AD7200" || based_modelid == "RT-N65U" || based_modelid == "GT-AC5300" || based_modelid == "RT-AX88U" || based_modelid == "RT-AX95U" || based_modelid == "BRT-AC828"
-							){
+
+							if (isSupport("usb3")) {
 								$("#reduce_usb3_tr").show();
 							}
 
@@ -1745,6 +2013,19 @@ function warn_jffs_format(){
 					  <td colspan="2"><#t2BC#></td>
 					</tr>
 				</thead>
+				<tr id="ntpd_server_tr">
+					<th>Enable local NTP server</th>
+					<td>
+						<input type="radio" name="ntpd_enable" value="1" onclick="showhide('ntpd_redir_tr', 1);" <% nvram_match_x("","ntpd_enable","1", "checked"); %> ><#checkbox_Yes#>
+						<input type="radio" name="ntpd_enable" value="0" onclick="showhide('ntpd_redir_tr', 0);" <% nvram_match_x("","ntpd_enable","0", "checked"); %> ><#checkbox_No#>
+					</td>
+				</tr>
+				<tr id="ntpd_redir_tr">
+					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(50,29)">Intercept NTP client requests</a></th>
+					<td>
+						<input type="radio" name="ntpd_server_redir" value="1" <% nvram_match_x("","ntpd_server_redir","1", "checked"); %> ><#checkbox_Yes#>
+						<input type="radio" name="ntpd_server_redir" value="0" <% nvram_match_x("","ntpd_server_redir","0", "checked"); %> ><#checkbox_No#>
+					</td>
 				<tr>
 					<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(11,2)"><#LANHostConfig_x_TimeZone_itemname#></a></th>
 					<td>
@@ -1811,9 +2092,45 @@ function warn_jffs_format(){
 				<tr>
 					<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(11,3)"><#LANHostConfig_x_NTPServer_itemname#></a></th>
 					<td>
-						<input type="text" maxlength="256" class="input_32_table" name="ntp_server0" value="<% nvram_get("ntp_server0"); %>" onKeyPress="return validator.isString(this, event);" autocorrect="off" autocapitalize="off">
+						<input type="text" maxlength="255" class="input_32_table" name="ntp_server0" value="<% nvram_get("ntp_server0"); %>" onKeyPress="return validator.isString(this, event);" autocorrect="off" autocapitalize="off">
 						<a href="javascript:openLink('x_NTPServer1')"  name="x_NTPServer1_link" style=" margin-left:5px; text-decoration: underline;"><#LANHostConfig_x_NTPServer1_linkname#></a>
-						<div id="svc_hint_div" style="display:none;"><span style="color:#FFCC00;"><#General_x_SystemTime_syncNTP#></span></div>
+						<div id="svc_hint_div" style="display:none;">
+							<span style="color:#FFCC00;"><#General_x_SystemTime_syncNTP#></span>
+							<a id="ntp_faq" href="" target="_blank" style="margin-left:5px; color: #FFCC00; text-decoration: underline;">FAQ</a>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<th>Secondary NTP Server</th>
+					<td>
+						<input type="text" maxlength="255" class="input_32_table" name="ntp_server1" value="<% nvram_get("ntp_server1"); %>" onKeyPress="return validator.isString(this, event);" autocorrect="off" autocapitalize="off">
+					</td>
+				</tr>
+				<tr id="network_monitor_tr">
+					<th><#Network_Monitoring#></th>
+					<td>
+						<input type="checkbox" name="dns_probe_chk" value="" <% nvram_match("dns_probe", "1", "checked"); %> onClick="appendMonitorOption(this);"><div style="display: inline-block; vertical-align: middle; margin-bottom: 2px;" ><#DNS_Query#></div>
+						<input type="checkbox" name="wandog_enable_chk" value="" <% nvram_match("wandog_enable", "1", "checked"); %>  onClick="appendMonitorOption(this);"><div style="display: inline-block; vertical-align: middle; margin-bottom: 2px;"><#Ping#></div>
+					</td>
+				</tr>
+				<tr id="probe_host_tr" style="display: none;">
+					<th><#Resolved_Target#></th>
+					<td>
+							<input type="text" class="input_32_table" name="dns_probe_host" maxlength="255" autocorrect="off" autocapitalize="off" value="<% nvram_get("dns_probe_host"); %>">
+					</td>
+				</tr>
+				<tr id="probe_content_tr" style="display: none;">
+					<th><#Respond_IP#></th>
+					<td>
+							<input type="text" class="input_32_table" name="dns_probe_content" maxlength="1024" autocorrect="off" autocapitalize="off" value="<% nvram_get("dns_probe_content"); %>">
+					</td>
+				</tr>
+				<tr id="ping_tr" style="display: none;">
+					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(26,2);"><#Ping_Target#></a></th>
+					<td>
+							<input type="text" class="input_32_table" name="wandog_target" maxlength="100" value="<% nvram_get("wandog_target"); %>" placeholder="ex: www.google.com" autocorrect="off" autocapitalize="off">
+							<img id="ping_pull_arrow" class="pull_arrow" height="14px;" src="/images/arrow-down.gif" style="position:absolute;*margin-left:-3px;*margin-top:1px;" onclick="pullPingTargetList(this);" title="<#select_network_host#>">
+							<div id="TargetList_Block_PC" name="TargetList_Block_PC" class="clientlist_dropdown" style="margin-left: 2px; width: 348px;display: none;"></div>
 					</td>
 				</tr>
 				<tr>
@@ -1826,8 +2143,8 @@ function warn_jffs_format(){
 				<tr id="nat_redirect_enable_tr">
 					<th align="right"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,6);"><#Enable_redirect_notice#></a></th>
 					<td>
-						<input type="radio" name="nat_redirect_enable" class="input" value="1" <% nvram_match_x("","nat_redirect_enable","1", "checked"); %> ><#checkbox_Yes#>
-						<input type="radio" name="nat_redirect_enable" class="input" value="0" <% nvram_match_x("","nat_redirect_enable","0", "checked"); %> ><#checkbox_No#>
+						<input type="radio" name="nat_redirect_enable" value="1" <% nvram_match_x("","nat_redirect_enable","1", "checked"); %> ><#checkbox_Yes#>
+						<input type="radio" name="nat_redirect_enable" value="0" <% nvram_match_x("","nat_redirect_enable","0", "checked"); %> ><#checkbox_No#>
 					</td>
 				</tr>
 				<tr>
@@ -1838,12 +2155,25 @@ function warn_jffs_format(){
 					</td>
 				</tr>
 
-				<tr id="btn_ez_radiotoggle_tr">
+				<tr id="btn_ez_radiotoggle_tr" style="display: none;">
 					<th><#WPS_btn_behavior#></th>
 					<td>
-						<input type="radio" name="btn_ez_radiotoggle" id="turn_WPS" class="input" style="display:none;" value="0"><label for="turn_WPS"><#WPS_btn_actWPS#></label>
-						<input type="radio" name="btn_ez_radiotoggle" id="turn_WiFi" class="input" style="display:none;" value="1" <% nvram_match_x("", "btn_ez_radiotoggle", "1", "checked"); %>><label for="turn_WiFi" id="turn_WiFi_str"><#WPS_btn_toggle#></label>
-						<input type="radio" name="btn_ez_radiotoggle" id="turn_LED" class="input" style="display:none;" value="0" <% nvram_match_x("", "btn_ez_mode", "1", "checked"); %>><label for="turn_LED" id="turn_LED_str">Turn LED On/Off</label>
+						<label for="turn_WPS" id="btn_ez_WPS">
+							<input type="radio" name="btn_ez_radiotoggle" id="turn_WPS" class="input" value="0"><#WPS_btn_actWPS#>
+						</label>
+						<label for="turn_WiFi" id="btn_ez_WiFi" style="display:none;">
+							<input type="radio" name="btn_ez_radiotoggle" id="turn_WiFi" class="input" value="1"><#WPS_btn_toggle#>
+						</label>
+						<label for="turn_LED" id="btn_ez_LED" style="display:none;">
+							<input type="radio" name="btn_ez_radiotoggle" id="turn_LED" class="input" value="0"><#LED_switch#>
+						</label>					
+					</td>
+				</tr>
+				<tr>
+					<th>Disable LEDs</th>
+					<td>
+						<input type="radio" name="led_disable" value="1" <% nvram_match_x("", "led_disable", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="led_disable" value="0" <% nvram_match_x("", "led_disable", "0", "checked"); %>><#checkbox_No#>
 					</td>
 				</tr>
 				<tr id="pwrsave_tr">
@@ -1882,6 +2212,24 @@ function warn_jffs_format(){
 						<input type="text" maxlength="2" class="input_3_table" name="reboot_time_x_min" onKeyPress="return validator.isNumber(this,event);" onblur="validator.timeRange(this, 1);" autocorrect="off" autocapitalize="off">
 					</td>
 				</tr>
+				<tr id="ncb_enable_option_tr" style="display:none">
+					<th><#Enable_ncb_notice#></th>
+					<td>
+						<select name="ncb_enable_option" class="input_option">
+							<option value="0" <% nvram_match("ncb_enable", "0", "selected"); %>><#Enable_ncb_Non_Block#></option>
+							<option value="1" <% nvram_match("ncb_enable", "1", "selected"); %>><#Enable_ncb_Limited_Block#></option>
+							<option value="2" <% nvram_match("ncb_enable", "2", "selected"); %>><#Enable_ncb_All_Block#></option>
+						</select>
+					</td>
+				</tr>
+
+				<tr id="sw_mode_radio_tr" style="display:none">
+					<th><#OP_AP_item#></th>
+					<td>
+						<input type="radio" name="sw_mode_radio" value="1" <% nvram_match_x("","sw_mode","3", "checked"); %> ><#checkbox_Yes#>
+						<input type="radio" name="sw_mode_radio" value="0" <% nvram_match_x("","sw_mode","1", "checked"); %> ><#checkbox_No#>
+					</td>
+				</tr>
 			</table>
 
 			<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable" style="margin-top:8px;">
@@ -1893,8 +2241,9 @@ function warn_jffs_format(){
 				<tr id="telnet_tr">
 					<th><#Enable_Telnet#></th>
 					<td>
-						<input type="radio" name="telnetd_enable" class="input" value="1" <% nvram_match_x("LANHostConfig", "telnetd_enable", "1", "checked"); %>><#checkbox_Yes#>
-						<input type="radio" name="telnetd_enable" class="input" value="0" <% nvram_match_x("LANHostConfig", "telnetd_enable", "0", "checked"); %>><#checkbox_No#>
+						<input type="radio" name="telnetd_enable" value="1" onchange="telnet_enable(this.value);" <% nvram_match_x("LANHostConfig", "telnetd_enable", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="telnetd_enable" value="0" onchange="telnet_enable(this.value);" <% nvram_match_x("LANHostConfig", "telnetd_enable", "0", "checked"); %>><#checkbox_No#>
+						<div style="color: #FFCC00;display:none;" id="SSH_Port_Suggestion2">* <#SSH_Port_Suggestion2#></div>
 					</td>
 				</tr>
 				<tr id="sshd_enable_tr">
@@ -1902,8 +2251,8 @@ function warn_jffs_format(){
 					<td>
 						<select name="sshd_enable" class="input_option" onchange="check_sshd_enable(this.value);">
 							<option value="0" <% nvram_match("sshd_enable", "0", "selected"); %>><#checkbox_No#></option>
-							<option value="1" <% nvram_match("sshd_enable", "1", "selected"); %>>LAN + WAN</option>
 							<option value="2" <% nvram_match("sshd_enable", "2", "selected"); %>>LAN only</option>
+							<option value="1" <% nvram_match("sshd_enable", "1", "selected"); %>>LAN & WAN</option>
 						</select>
 					</td>
 				</tr>
@@ -1917,14 +2266,16 @@ function warn_jffs_format(){
 				<tr id="sshd_port_tr">
 					<th><#Port_SSH#></th>
 					<td>
-						<input type="text" class="input_6_table" maxlength="5" name="sshd_port" onKeyPress="return validator.isNumber(this,event);" onblur="validator.numberRange(this, 1, 65535);" value='<% nvram_get("sshd_port"); %>' autocorrect="off" autocapitalize="off">
+						<input type="text" class="input_6_table" maxlength="5" id="sshd_port" name="sshd_port" onKeyPress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off" value='<% nvram_get("sshd_port"); %>' onkeydown="reset_portconflict_hint();">
+						<span id="port_conflict_sshdport" style="color: #e68282; display: none;">Port Conflict</span>
+						<div style="color: #FFCC00;display:none;" id="SSH_Port_Suggestion1">* Using a different port than the default port 22 is recommended to avoid port scan attacks.</div>
 					</td>
 				</tr>
 				<tr id="sshd_password_tr">
 					<th><#Allow_PWLogin#></th>
 					<td>
-						<input type="radio" name="sshd_pass" class="input" value="1" <% nvram_match("sshd_pass", "1", "checked"); %>><#checkbox_Yes#>
-						<input type="radio" name="sshd_pass" class="input" value="0" <% nvram_match("sshd_pass", "0", "checked"); %>><#checkbox_No#>
+						<input type="radio" name="sshd_pass" value="1" <% nvram_match("sshd_pass", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="sshd_pass" value="0" <% nvram_match("sshd_pass", "0", "checked"); %>><#checkbox_No#>
 					</td>
 				</tr>
 				<tr id="sshd_bfp_field">
@@ -1937,8 +2288,15 @@ function warn_jffs_format(){
 				<tr id="auth_keys_tr">
 					<th><#Authorized_Keys#></th>
 					<td>
-						<textarea rows="8" class="textarea_ssh_table" name="sshd_authkeys" style="width:95%;" spellcheck="false" maxlength="2999"><% nvram_clean_get("sshd_authkeys"); %></textarea>
+						<textarea rows="8" class="textarea_ssh_table" style="width:98%; overflow:auto; word-break:break-all;" name="sshd_authkeys" style="width:95%;" spellcheck="false" maxlength="2999"><% nvram_clean_get("sshd_authkeys"); %></textarea>
 						<span id="ssh_alert_msg"></span>
+					</td>
+				</tr>
+				<tr id="plc_sleep_tr" style="display:none;">
+					<th align="right"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,12);">Enable PLC sleep automatically<!--untranslated--></a></th>
+					<td>
+						<input type="radio" name="plc_sleep_enabled" value="1" <% nvram_match_x("","plc_sleep_enabled","1", "checked"); %> ><#checkbox_Yes#>
+						<input type="radio" name="plc_sleep_enabled" value="0" <% nvram_match_x("","plc_sleep_enabled","0", "checked"); %> ><#checkbox_No#>
 					</td>
 				</tr>
 				<tr>
@@ -1946,6 +2304,14 @@ function warn_jffs_format(){
 					<td>
 						<input type="text" class="input_3_table" maxlength="3" name="shell_timeout_x" value="" onKeyPress="return validator.isNumber(this,event);" autocorrect="off" autocapitalize="off"> <#Minute#>
 						<span>(<#zero_disable#>)</span>
+					</td>
+				</tr>
+
+				<tr id="https_download_cert" style="display: none;">
+					<th>Download Certificate</th>
+					<td>
+						<input id="download_cert_btn" class="button_gen" onclick="save_cert_key();" type="button" value="<#btn_Export#>" />
+						<span id="download_cert_desc">Download and install SSL certificate on your browser to trust accessing your local domain “router.asus.com” with HTTPS protocol. To export certificate after applying setting.</span><a href="https://www.asus.com/support/FAQ/1034294" style="font-family:Lucida Console;text-decoration:underline;color:#FFCC00; margin-left: 5px;" target="_blank">FAQ</a>
 					</td>
 				</tr>
 			</table>
@@ -1976,8 +2342,10 @@ function warn_jffs_format(){
 				<tr id="https_lanport">
 					<th><#System_HTTPS_LAN_Port#></th>
 					<td>
-						<input type="text" maxlength="5" class="input_6_table" name="https_lanport" value="<% nvram_get("https_lanport"); %>" onKeyPress="return validator.isNumber(this,event);" onBlur="change_url(this.value, 'https_lan');" autocorrect="off" autocapitalize="off">
-						<span id="https_access_page"></span>
+						<input type="text" maxlength="5" class="input_6_table" id="https_lanport_input" name="https_lanport" value="<% nvram_get("https_lanport"); %>" onKeyPress="return validator.isNumber(this,event);" onBlur="change_url(this.value, 'https_lan');" autocorrect="off" autocapitalize="off" onkeydown="reset_portconflict_hint();">
+						<span id="port_conflict_httpslanport" style="color: #e68282; display: none;">Port Conflict</span>
+						<div id="https_access_page" style="color: #FFCC00;"></div>
+						<div style="color: #FFCC00; display: none;">* <#HttpsLanport_Hint#></div>
 					</td>
 				</tr>
                                 <tr id="https_crt_gen" style="display:none;">
@@ -2036,8 +2404,8 @@ function warn_jffs_format(){
 				<tr id="misc_http_x_tr">
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(8,2);"><#FirewallConfig_x_WanWebEnable_itemname#></a></th>
 					<td>
-						<input type="radio" value="1" name="misc_http_x" class="input" onClick="hideport(1);enable_wan_access(1);" <% nvram_match("misc_http_x", "1", "checked"); %>><#checkbox_Yes#>
-						<input type="radio" value="0" name="misc_http_x" class="input" onClick="hideport(0);enable_wan_access(0);" <% nvram_match("misc_http_x", "0", "checked"); %>><#checkbox_No#><br>
+						<input type="radio" value="1" name="misc_http_x" onClick="hideport(1);enable_wan_access(1);" <% nvram_match("misc_http_x", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" value="0" name="misc_http_x" onClick="hideport(0);enable_wan_access(0);" <% nvram_match("misc_http_x", "0", "checked"); %>><#checkbox_No#><br>
 						<span class="formfontdesc" id="WAN_access_hint" style="color:#FFCC00; display:none;"><#FirewallConfig_x_WanWebEnable_HTTPS_only#> 
 							<a id="faq" href="" target="_blank" style="margin-left: 5px; color:#FFCC00; text-decoration: underline;">FAQ</a>
 						</span>
@@ -2070,7 +2438,7 @@ function warn_jffs_format(){
 				
 				<tr>
 					<th width="10%"><div id="selAll" class="all_disable" style="margin: auto;width:40px;" onclick="control_all_rule_status(this);"><#All#></div></th>
-					<th width="40%"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,9);"><#FirewallConfig_LanWanDstIP_itemname#></a></th>
+					<th width="40%"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(6,1);"><#RouterConfig_GWStaticIP_itemname#></a></th>
 					<th width="40%"><#Access_Type#></th>
 					<th width="10%"><#list_add_delete#></th>
 				</tr>
@@ -2096,7 +2464,7 @@ function warn_jffs_format(){
 			<div id="http_clientlist_Block"></div>
 			<div class="apply_gen">
 				<input name="button" type="button" class="button_gen" onclick="applyRule();" value="<#CTL_apply#>"/>
-			</div>   
+			</div>
 		</td>
 	</tr>
 </tbody>

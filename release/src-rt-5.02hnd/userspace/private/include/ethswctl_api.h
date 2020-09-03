@@ -96,6 +96,7 @@ int ethswctl_pagedump(int unit, int page);
 /****************************************************************************/
 #define ethswctl_mibdump(port, unit, type) ethswctl_mibdump_x(unit, port, -1, type)
 int ethswctl_mibdump_x(int unit, int port, int priority, int type);
+int ethswctl_mibdump_us(int unit, int port, char *data); // add by Andrew
 
 /****************************************************************************/
 /* dump/set the enet rx & tx iuDMA info for channels controlled by Host MIPS*/
@@ -1264,6 +1265,7 @@ int bcm_arl_read2(int *unit, char *mac, bcm_vlan_t *vid, unsigned short *value);
 int bcm_arl_write2(int unit, char *mac, bcm_vlan_t vid, int value);
 
 int bcm_arl_dump(int unit);
+int bcm_arl_dump_us(int unit, char *data); // add by Andrew
 int bcm_arl_flush(int unit);
 
 /*
@@ -1476,6 +1478,7 @@ int bcm_port_trunk_set(int unit,unsigned int hash_sel);
 int bcm_port_trunk_get(int unit,int *enbl,unsigned int *hash_sel,unsigned int *grp0_pmap,unsigned int *grp1_pmap);
 int bcm_enet_map_phys_port_to_rdpa_if(int unit, bcm_port_t port);
 int bcm_enet_get_rdpa_if_from_if_name(const char* ifname, int* rdpaIf_p);
+int bcm_cfp_op(cfpArg_t *cfpArg);
 
 
 int bcm_phy_apd_get(unsigned int* apd_en);

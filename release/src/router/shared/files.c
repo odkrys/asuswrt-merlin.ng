@@ -17,6 +17,7 @@
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/file.h>
+#include <limits.h>		//PATH_MAX
 #include "shutils.h"
 #include "shared.h"
 
@@ -26,6 +27,12 @@ int f_exists(const char *path)	// note: anything but a directory
 {
 	struct stat st;
 	return (stat(path, &st) == 0) && (!S_ISDIR(st.st_mode));
+}
+
+int l_exists(const char *path)  //  link only
+{
+	struct stat st;
+	return (lstat(path, &st) == 0) && (S_ISLNK(st.st_mode));
 }
 
 int d_exists(const char *path)	//  directory only

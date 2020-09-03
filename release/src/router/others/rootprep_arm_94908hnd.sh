@@ -10,6 +10,7 @@ mkdir -p -m 0755 cifs1
 mkdir -p -m 0755 cifs2
 mkdir -p -m 0755 sysroot
 mkdir -p -m 0755 var
+rm -rf opt
 ln -sf tmp/opt opt
 
 # tmp
@@ -23,9 +24,9 @@ ln -sf tmp/media media
 rm -rf tmp/etc/*
 #(cd etc && tar -cpf - .) | (cd tmp/etc && tar -xpf - )
 rm -rf etc && ln -sf tmp/etc etc
-echo "/lib/aarch64" > rom/etc/ld.so.conf
 echo "/lib" >> rom/etc/ld.so.conf
 echo "/usr/lib" >> rom/etc/ld.so.conf
+echo "/lib/aarch64" > rom/etc/ld.so.conf
 #/sbin/ldconfig -r $ROOTDIR
 mv tmp/etc/* rom/etc
 rm -f etc/ld.so.conf etc/ld.so.cache
@@ -48,8 +49,8 @@ ln -sf tmp/home/root root
 
 # !!TB
 rm -rf www/ext www/user www/proxy.pac www/wpad.dat
-ln -sf /var/wwwext www/ext
-ln -sf /var/wwwext www/user
+ln -sf /tmp/var/wwwext www/ext
+ln -sf /tmp/var/wwwext www/user
 ln -sf /www/ext/proxy.pac www/proxy.pac
 ln -sf /www/ext/proxy.pac www/wpad.dat
 

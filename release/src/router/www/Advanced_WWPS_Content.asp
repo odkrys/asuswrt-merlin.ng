@@ -19,7 +19,7 @@
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script><% wl_get_parameter(); %>
 $(function () {
-	if(amesh_support && (isSwMode("rt") || isSwMode("ap"))) {
+	if(amesh_support && (isSwMode("rt") || isSwMode("ap")) && ameshRouter_support) {
 		addNewScript('/require/modules/amesh.js');
 	}
 });
@@ -198,13 +198,6 @@ function applyRule(){
 }
 
 function enableWPS(){
-	if(amesh_support && (isSwMode("rt") || isSwMode("ap"))) {
-		if(!AiMesh_confirm_msg("Wireless_WPS", document.form.wps_enable.value)) {
-			document.form.wps_enable.value = "1";
-			$('#radio_wps_enable').find('.iphone_switch').animate({backgroundPosition: 0}, "slow");
-			return;
-		}
-	}
 	document.form.action_script.value = "restart_wireless";
 	document.form.action_mode.value = "apply_new";
 	document.form.action_wait.value = "3";
@@ -242,7 +235,7 @@ function resetWPS(){
 	if(based_modelid == "BLUECAVE")
 		sec = 30;
 	if (Qcawifi_support)
-		sec += 7;
+		sec = 20;
 	showLoading(sec);
 	FormActions("apply.cgi", "wps_reset", "", sec.toString());
 	document.form.submit();
@@ -378,6 +371,9 @@ function refresh_wpsinfo(xhr){
 		var wps_infos1 = wpss[0].getElementsByTagName("wps_info1");
 		show_wsc_status2(wps_infos0, wps_infos1);
 	}
+
+	if(lyra_hide_support)
+		document.getElementById("devicePIN_tr").style.display = "none";
 }
 
 function show_wsc_status(wps_infos){
@@ -483,14 +479,19 @@ function show_wsc_status(wps_infos){
 	document.getElementById("wpsmethod_tr").style.display = "";
 	if(wps_enable_old == "1"){
 		inputCtrl(document.form.wps_sta_pin, 1);
-		if(wps_infos[1].firstChild.nodeValue == "Yes")
+		if(wps_infos[1].firstChild.nodeValue == "Yes"){
 			document.getElementById("Reset_OOB").style.display = "";
-		else
+			document.getElementById("Reset_OOB_desc").style.display = "";
+		}
+		else{
 			document.getElementById("Reset_OOB").style.display = "none";
+			document.getElementById("Reset_OOB_desc").style.display = "none";
+		}
 	}
 	else{
 		inputCtrl(document.form.wps_sta_pin, 0);
 		document.getElementById("Reset_OOB").style.display = "none";
+		document.getElementById("Reset_OOB_desc").style.display = "none";
 	}
 	
 	// show connecting btn
@@ -621,14 +622,19 @@ function show_wsc_status2(wps_infos0, wps_infos1){
 	document.getElementById("wpsmethod_tr").style.display = "";
 	if(wps_enable_old == "1"){
 		inputCtrl(document.form.wps_sta_pin, 1);
-		if(wps_infos0[1].firstChild.nodeValue == "Yes" || wps_infos1[1].firstChild.nodeValue == "Yes")
+		if(wps_infos0[1].firstChild.nodeValue == "Yes" || wps_infos1[1].firstChild.nodeValue == "Yes"){
 			document.getElementById("Reset_OOB").style.display = "";
-		else
+			document.getElementById("Reset_OOB_desc").style.display = "";
+		}
+		else{
 			document.getElementById("Reset_OOB").style.display = "none";
+			document.getElementById("Reset_OOB_desc").style.display = "none";
+		}
 	}
 	else{
 		inputCtrl(document.form.wps_sta_pin, 0);
 		document.getElementById("Reset_OOB").style.display = "none";
+		document.getElementById("Reset_OOB_desc").style.display = "none";
 	}
 
 	if(wps_infos0[0].firstChild.nodeValue == "Start WPS Process" || wps_infos1[0].firstChild.nodeValue == "Start WPS Process")
@@ -692,7 +698,7 @@ function checkWLReady(){
 </script>
 </head>
 
-<body onload="initial();" onunLoad="return unload_body();">
+<body onload="initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 <div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" src="" width="0" height="0" frameborder="0"></iframe>
@@ -775,6 +781,8 @@ function checkWLReady(){
 										if(	document.form.wl0_auth_mode_x.value == "shared" ||	document.form.wl1_auth_mode_x.value == "shared"
 										||	document.form.wl0_auth_mode_x.value == "psk"	||	document.form.wl0_auth_mode_x.value == "wpa"
 										||	document.form.wl1_auth_mode_x.value == "psk"	||	document.form.wl1_auth_mode_x.value == "wpa"
+										||	document.form.wl0_auth_mode_x.value == "wpa2"    ||	document.form.wl0_auth_mode_x.value == "wpa2"
+										||	document.form.wl1_auth_mode_x.value == "wpawpa2"    ||	document.form.wl1_auth_mode_x.value == "wpawpa2"
 										||	document.form.wl0_auth_mode_x.value == "open" && (document.form.wl0_wep_x.value == "1" || document.form.wl0_wep_x.value == "2")
 										||	document.form.wl1_auth_mode_x.value == "open" && (document.form.wl1_wep_x.value == "1" || document.form.wl1_wep_x.value == "2")){
 											alert("<#note_auth_wpa_WPS#>");
@@ -785,7 +793,8 @@ function checkWLReady(){
 									else{		//Broadcom, Ralink normal case
 										if(document.form.wps_band.value == 0){
 											if(	document.form.wl0_auth_mode_x.value == "shared"
-											||	document.form.wl0_auth_mode_x.value == "psk"	||	document.form.wl0_auth_mode_x.value == "wpa"
+											||	document.form.wl0_auth_mode_x.value == "psk"
+											||	document.form.wl0_auth_mode_x.value == "wpa" ||	document.form.wl0_auth_mode_x.value == "wpa2" || document.form.wl0_auth_mode_x.value == "wpawpa2"
 											||	document.form.wl0_auth_mode_x.value == "open" && (document.form.wl0_wep_x.value == "1" || document.form.wl0_wep_x.value == "2")){
 												alert(band_string + " : <#note_auth_wpa_WPS#>");
 												$('#iphone_switch').animate({backgroundPosition: -37}, "slow", function() {});
@@ -800,7 +809,8 @@ function checkWLReady(){
 										}
 										else if(document.form.wps_band.value == 1){			//5G
 											if(	document.form.wl1_auth_mode_x.value == "shared"
-											||	document.form.wl1_auth_mode_x.value == "psk"	||	document.form.wl1_auth_mode_x.value == "wpa"
+											||	document.form.wl1_auth_mode_x.value == "psk"
+											||	document.form.wl1_auth_mode_x.value == "wpa" ||	document.form.wl1_auth_mode_x.value == "wpa2" || document.form.wl1_auth_mode_x.value == "wpawpa2"
 											||	document.form.wl1_auth_mode_x.value == "open" && (document.form.wl1_wep_x.value == "1" || document.form.wl1_wep_x.value == "2")){
 												alert(band_string + " : <#note_auth_wpa_WPS#>");
 												$('#iphone_switch').animate({backgroundPosition: -37}, "slow", function() {});
@@ -816,7 +826,8 @@ function checkWLReady(){
 										}
 										else if(document.form.wps_band.value == 2){		//5G-2
 											if(	document.form.wl2_auth_mode_x.value == "shared"
-											||	document.form.wl2_auth_mode_x.value == "psk"	||	document.form.wl2_auth_mode_x.value == "wpa"
+											||	document.form.wl2_auth_mode_x.value == "psk"
+											||	document.form.wl2_auth_mode_x.value == "wpa" ||	document.form.wl2_auth_mode_x.value == "wpa2" || document.form.wl2_auth_mode_x.value == "wpawpa2"
 											||	document.form.wl2_auth_mode_x.value == "open" && (document.form.wl2_wep_x.value == "1" || document.form.wl2_wep_x.value == "2")){
 												alert(band_string + " : <#note_auth_wpa_WPS#>");
 												$('#iphone_switch').animate({backgroundPosition: -37}, "slow", function() {});
@@ -879,6 +890,7 @@ function checkWLReady(){
 							</td>
 							<td style="border:0px">
 								<input class="button_gen" type="button" onClick="resetWPS();" id="Reset_OOB" name="Reset_OOB" value="<#CTL_Reset_OOB#>" style="padding:0 0.3em 0 0.3em;" >
+								<br><span id="Reset_OOB_desc"><#WLANConfig11b_x_ResetWPS_desc#></span>
 							</td>
 						</tr></table>
 					</div>

@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 2018 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -33,7 +33,7 @@ static void unit_stop(void)
 
 }
 
-#ifdef USE_NGHTTP2
+#ifndef CURL_DISABLE_DOH
 #define DNS_PREAMBLE "\x00\x00\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00"
 #define LABEL_TEST "\x04\x74\x65\x73\x74"
 #define LABEL_HOST "\x04\x68\x6f\x73\x74"
@@ -152,7 +152,7 @@ static struct dohresp resp[] = {
 
 UNITTEST_START
 {
-  size_t size;
+  size_t size = 0;
   unsigned char buffer[256];
   size_t i;
   unsigned char *p;
@@ -283,7 +283,7 @@ UNITTEST_START
 }
 UNITTEST_STOP
 
-#else /* USE_NGHTTP2 */
+#else /* CURL_DISABLE_DOH */
 UNITTEST_START
 {
   return 1; /* nothing to do, just fail */

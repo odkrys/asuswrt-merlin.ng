@@ -42,7 +42,7 @@
 	font-size:14px;
 	z-index:200;
 	position:relative;
-	background-color:balck:
+	background-color:black:
 }	
 .QISform_wireless{
 	width:600px;
@@ -90,7 +90,7 @@
 </style>
 <script>
 $(function () {
-	if(amesh_support) {
+	if(amesh_support && ameshRouter_support) {
 		addNewScript('/require/modules/amesh.js');
 	}
 });
@@ -117,7 +117,8 @@ function initial(){
 	var gen_operation_mode = function(_jsonArray, _sw_mode) {
 		var $spanHtml = $('<span>');
 		$spanHtml.attr({"id" : _jsonArray["span"]["id"]});
-		$spanHtml.css("margin-right", "10px");
+		if(_jsonArray.css_list != undefined)
+			$spanHtml.css(_jsonArray.css_list);
 		var $inputHtml = $('<input>');
 		$inputHtml.attr({ "type" : "radio", "id" : _jsonArray["input"]["id"], "name" :  _jsonArray["input"]["name"], "value" : _jsonArray["input"]["value"] });
 		$inputHtml.addClass("input");
@@ -146,10 +147,11 @@ function initial(){
 				"value" : "1"
 			},
 			"label" : {
-				"text" : (amesh_support) ? "<#AiMesh_GW_item#>" : "<#OP_GW_item#>"
+				"text" : (amesh_support && ameshRouter_support) ? "<#AiMesh_GW_item#>" : "<#OP_GW_item#>"
 			},
 			"mode" : "1",
-			"express" : "0"
+			"express" : "0",
+			"css_list" : {"margin":"0px 10px 5px 0px", "display":"block"}
 		},
 		"apMode" : {
 			"span" : {
@@ -161,10 +163,11 @@ function initial(){
 				"value" : "3"
 			},
 			"label" : {
-				"text" : (amesh_support) ? "<#AiMesh_AP_item#>" : "<#OP_AP_item#>"
+				"text" : (amesh_support && ameshRouter_support) ? "<#AiMesh_AP_item#>" : "<#OP_AP_item#>"
 			},
 			"mode" : "3",
-			"express" : "0"
+			"express" : "0",
+			"css_list" : {"margin":"0px 10px 5px 0px", "display":"block"}
 		},
 		"repeaterMode" : {
 			"span" : {
@@ -179,7 +182,8 @@ function initial(){
 				"text" : "<#OP_RE_item#>"
 			},
 			"mode" : "2",
-			"express" : "0"
+			"express" : "0",
+			"css_list" : {"margin":"0px 10px 5px 0px", "display":"inline-block"}
 		},
 		"rp_express_2g" : {
 			"span" : {
@@ -194,7 +198,8 @@ function initial(){
 				"text" : "<#OP_RE2G_item#>"
 			},
 			"mode" : "2",
-			"express" : "1"
+			"express" : "1",
+			"css_list" : {"margin":"0px 10px 5px 0px", "display":"inline-block"}
 		},
 		"rp_express_5g" : {
 			"span" : {
@@ -209,7 +214,8 @@ function initial(){
 				"text" : "<#OP_RE5G_item#>"
 			},
 			"mode" : "2",
-			"express" : "2"
+			"express" : "2",
+			"css_list" : {"margin":"0px 10px 5px 0px", "display":"inline-block"}
 		},
 		"mbMode" : {
 			"span" : {
@@ -224,7 +230,8 @@ function initial(){
 				"text" : "<#OP_MB_item#>"
 			},
 			"mode" : "4",
-			"express" : "0"
+			"express" : "0",
+			"css_list" : {"margin":"0px 10px 5px 0px", "display":"block"}
 		},
 		"AiMeshMode" : {
 			"span" : {
@@ -239,37 +246,20 @@ function initial(){
 				"text" : "<#AiMesh_Node#>"
 			},
 			"mode" : "5",
-			"express" : "0"
+			"express" : "0",
+			"css_list" : {"margin":"0px 10px 5px 0px", "display":"block"}
 		}
 	}
-        
-	if(amesh_support) {
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["routerMode"], sw_mode_orig));
-		$("#operation_mode_bg").append("<br>");
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["apMode"], sw_mode_orig));
-		$("#operation_mode_bg").append("<br>");
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["repeaterMode"], sw_mode_orig));
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["rp_express_2g"], sw_mode_orig));
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["rp_express_5g"], sw_mode_orig));
-		$("#operation_mode_bg").append("<br>");
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["mbMode"], sw_mode_orig));
-		if(ameshNode_support) {
-			$("#operation_mode_bg").append("<br>");
-			$("#operation_mode_bg").append(gen_operation_mode(operation_array["AiMeshMode"], sw_mode_orig));
-		}
-        
-	}
-	else {
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["routerMode"], sw_mode_orig));
-		$("#operation_mode_bg").append("<br>");
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["repeaterMode"], sw_mode_orig));
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["rp_express_2g"], sw_mode_orig));
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["rp_express_5g"], sw_mode_orig));
-		$("#operation_mode_bg").append("<br>");
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["apMode"], sw_mode_orig));
-		$("#operation_mode_bg").append("<br>");
-		$("#operation_mode_bg").append(gen_operation_mode(operation_array["mbMode"], sw_mode_orig));
-	}
+
+	$("#operation_mode_bg").append(gen_operation_mode(operation_array["routerMode"], sw_mode_orig));
+	$("#operation_mode_bg").append(gen_operation_mode(operation_array["apMode"], sw_mode_orig));
+	$("#operation_mode_bg").append(gen_operation_mode(operation_array["repeaterMode"], sw_mode_orig));
+	$("#operation_mode_bg").append(gen_operation_mode(operation_array["rp_express_2g"], sw_mode_orig));
+	$("#operation_mode_bg").append(gen_operation_mode(operation_array["rp_express_5g"], sw_mode_orig));
+	$("#operation_mode_bg").append(gen_operation_mode(operation_array["mbMode"], sw_mode_orig));
+	if(amesh_support && ameshNode_support)
+		$("#operation_mode_bg").append(gen_operation_mode(operation_array["AiMeshMode"], sw_mode_orig));
+
 	setScenerion(sw_mode_orig, document.form.wlc_express.value);
 
 	if(downsize_4m_support || downsize_8m_support)
@@ -277,14 +267,14 @@ function initial(){
 
 	document.getElementById("rp_express_2g").style.display = "none";
 	document.getElementById("rp_express_5g").style.display = "none";
-	if(uiSupport("noRouter")){
+	if(isSupport("noRouter")){
 		document.getElementById("routerMode").style.display = "none";
 		document.getElementById("sw_mode1_radio").disabled = true;
 	}
 
-	if(uiSupport("rp_express_2g"))
+	if(isSupport("rp_express_2g"))
 		document.getElementById("rp_express_2g").style.display = "";
-	if(uiSupport("rp_express_5g"))
+	if(isSupport("rp_express_5g"))
 		document.getElementById("rp_express_5g").style.display = "";
 
 	if(!repeater_support){
@@ -295,6 +285,11 @@ function initial(){
 	if(!psta_support){
 		document.getElementById("mbMode").style.display = "none";
 		document.getElementById("sw_mode4_radio").disabled = true;
+	}
+
+	if(isSupport("noAP")){
+		$("#apMode").hide();
+		$("#sw_mode3_radio").attr("disabled", true);
 	}
 }
 
@@ -361,7 +356,7 @@ function saveMode(){
 		}
 	}
 
-	if(amesh_support) {
+	if(amesh_support && ameshRouter_support) {
 		if(!AiMesh_confirm_msg("Operation_Mode", document.form.sw_mode.value))
 			return false;
 	}
@@ -395,7 +390,7 @@ function saveMode(){
 		document.form.wlc_psta.value = 0;
 		document.form.wlc_psta.disabled = false;
 
-		if(amesh_support) {
+		if(amesh_support && ameshRouter_support) {
 			document.form.cfg_master.disabled = false;
 			document.form.cfg_master.value = 1;
 		}
@@ -498,60 +493,61 @@ function applyRule(){
 		else
 			document.form.wl0_auth_mode_x.value = "open";
 
-		if(band5g_support){
-			inputCtrl(document.form.wl1_ssid,1);
-			inputCtrl(document.form.wl1_crypto,1);
-			inputCtrl(document.form.wl1_wpa_psk,1);
-			inputCtrl(document.form.wl1_auth_mode_x,1);
-			if(!validator.stringSSID(document.form.wl1_ssid)){   //validate 5G SSID
-				document.form.wl1_ssid.focus();
-				return false;
-			}
-			
-			if(document.form.wl1_wpa_psk.value != ""){
-				if(is_KR_sku){
-					if(!validator.psk_KR(document.form.wl1_wpa_psk))           //validate 2.4G WPA2 key
-						return false;
+		if(document.form.smart_connect_x.value != "1"){
+			if(band5g_support){
+				inputCtrl(document.form.wl1_ssid,1);
+				inputCtrl(document.form.wl1_crypto,1);
+				inputCtrl(document.form.wl1_wpa_psk,1);
+				inputCtrl(document.form.wl1_auth_mode_x,1);
+				if(!validator.stringSSID(document.form.wl1_ssid)){ //validate 5G SSID
+					document.form.wl1_ssid.focus();
+					return false;
 				}
-				else{
-					if(!validator.psk(document.form.wl1_wpa_psk))	//validate 5G WPA2 key
-						return false;
-				}
-			
-				document.form.wl1_auth_mode_x.value = "psk2";
-				document.form.wl1_crypto.value = "aes";
-			}
-			else
-				document.form.wl1_auth_mode_x.value = "open";
-		}
 
-		if(wl_info.band5g_2_support){
-			inputCtrl(document.form.wl2_ssid,1);
-			inputCtrl(document.form.wl2_crypto,1);
-			inputCtrl(document.form.wl2_wpa_psk,1);
-			inputCtrl(document.form.wl2_auth_mode_x,1);
-			if(!validator.stringSSID(document.form.wl2_ssid)){   //validate 5G-2 SSID
-				document.form.wl2_ssid.focus();
-				return false;
-			}
-			
-			if(document.form.wl2_wpa_psk.value != ""){
-				if(is_KR_sku){
-					if(!validator.psk_KR(document.form.wl2_wpa_psk))           //validate 2.4G WPA2 key
-						return false;
-				}
-				else{
-					if(!validator.psk(document.form.wl2_wpa_psk))	//validate 5G-2 WPA2 key
-						return false;
-				}			
+				if(document.form.wl1_wpa_psk.value != ""){
+					if(is_KR_sku){
+						if(!validator.psk_KR(document.form.wl1_wpa_psk)) //validate 2.4G WPA2 key
+							return false;
+					}
+					else{
+						if(!validator.psk(document.form.wl1_wpa_psk)) //validate 5G WPA2 key
+							return false;
+					}
 
-				document.form.wl1_auth_mode_x.value = "psk2";
-				document.form.wl1_crypto.value = "aes";
+					document.form.wl1_auth_mode_x.value = "psk2";
+					document.form.wl1_crypto.value = "aes";
+				}
+				else
+					document.form.wl1_auth_mode_x.value = "open";
 			}
-			else
-				document.form.wl1_auth_mode_x.value = "open";
+
+			if(wl_info.band5g_2_support){
+				inputCtrl(document.form.wl2_ssid,1);
+				inputCtrl(document.form.wl2_crypto,1);
+				inputCtrl(document.form.wl2_wpa_psk,1);
+				inputCtrl(document.form.wl2_auth_mode_x,1);
+				if(!validator.stringSSID(document.form.wl2_ssid)){ //validate 5G-2 SSID
+					document.form.wl2_ssid.focus();
+					return false;
+				}
+
+				if(document.form.wl2_wpa_psk.value != ""){
+					if(is_KR_sku){
+						if(!validator.psk_KR(document.form.wl2_wpa_psk)) //validate 2.4G WPA2 key
+							return false;
+					}
+					else{
+						if(!validator.psk(document.form.wl2_wpa_psk)) //validate 5G-2 WPA2 key
+							return false;
+					}
+
+					document.form.wl1_auth_mode_x.value = "psk2";
+					document.form.wl1_crypto.value = "aes";
+				}
+				else
+					document.form.wl1_auth_mode_x.value = "open";
+			}
 		}
-			
 	}
 
 	showLoading();	
@@ -626,7 +622,7 @@ function setScenerion(mode, express){
 			$("#mode_desc").html("<#OP_AP_desc#><br/><span style=\"color:#FC0\"><#OP_AP_hint#></span>");
 		}else{*/
 			var desc = "";
-			if(amesh_support) {
+			if(amesh_support && ameshRouter_support) {
 				desc += "<#AiMesh_AP_desc#>";
 				desc += "<br>";
 				desc += "<#AiMesh_Node_Add#>";
@@ -653,7 +649,7 @@ function setScenerion(mode, express){
 			pstaDesc += "<br/><span style=\"color:#FC0\"><#deviceDiscorvy4#></span>";
 
 		var url = "/images/New_ui/mb.jpg";
-		var height = "250px";
+		var height = "305px";
 		if(odmpid == "RT-AC66U_B1" || odmpid == "RT-AC1750_B1" || odmpid == "RT-N66U_C1" || odmpid == "RT-AC1900U" || odmpid == "RT-AC67U")
 			url = "/images/RT-AC66U_V2/mb.jpg";
 		else if(odmpid == "RP-AC1900")
@@ -690,7 +686,7 @@ function setScenerion(mode, express){
 		else
 			$("#Senario").css({"height": "", "background": "url(/images/New_ui/rt.jpg) center no-repeat", "margin": "auto", "margin-bottom": "30px"});
 		var desc = "";
-		if(amesh_support) {
+		if(amesh_support && ameshRouter_support) {
 			desc += "<#AiMesh_GW_desc#>";
 			desc += "<br>";
 			desc += "<#AiMesh_Node_Add#>";
@@ -765,7 +761,7 @@ function change_smart_con(v){
 }
 </script>
 </head>
-<body onload="initial();" onunLoad="return unload_body();">
+<body onload="initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 <div id="hiddenMask" class="popup_bg">
 <table cellpadding="4" cellspacing="0" id="dr_sweet_advise" class="dr_sweet_advise" align="center">
@@ -953,7 +949,7 @@ function change_smart_con(v){
 										<div id="operation_mode_bg"></div>
 									</span>
 									<br/>
-									<span><label id="mode_desc"></label></span>
+									<span style="word-wrap:break-word;word-break:break-all"><label id="mode_desc"></label></span>
 								</div>
 							</td>
 						</tr>

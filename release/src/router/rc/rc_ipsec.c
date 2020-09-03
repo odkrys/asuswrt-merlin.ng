@@ -412,8 +412,12 @@ void ipsec_prof_fill_ext(int prof_idx, char *p_data, ipsec_prof_type_t prof_type
     p_end += i; /*to shifft next '>'*/
 
 	/*hash_p2_ext*/
-	/*the last one doesn't need to parse ">".*/
-    prof[prof_type][prof_idx].hash_p2_ext = atoi(p_end);
+    prof[prof_type][prof_idx].hash_p2_ext = (uint8_t)ipsec_profile_int_parse(FLAG_NONE,
+                                                               p_end, &i);
+	p_end += i; /*to shifft next '>'*/
+
+	/*pfs_group*/
+    prof[prof_type][prof_idx].pfs_group= atoi(p_end); /*the last one doesn't need to parse ">".*/
 
 	/*the end of profile*/
 	return;
@@ -498,6 +502,7 @@ void rc_ipsec_conf_set()
     return;
 }
 
+/*
 void rc_ipsec_secrets_init()
 {
     FILE *fp = NULL;
@@ -513,6 +518,7 @@ void rc_ipsec_secrets_init()
     }
     return;
 }
+*/
 
 void rc_strongswan_conf_set()
 {
@@ -520,53 +526,56 @@ void rc_strongswan_conf_set()
 	char *user;
 	int rc;
 
+	fp = fopen("/etc/strongswan.conf", "w");
+	if (fp == NULL)
+		return;
+
 	user = nvram_safe_get("http_username");
 	if (*user == '\0')
 		user = "admin";
 
-    rc = pre_ipsec_samba_prof_set();
-//DBG(("ipsec_samba#\n"));
-    fp = fopen("/tmp/etc/strongswan.conf", "w");
-    fprintf(fp, "# strongswan.conf - strongSwan configuration file\n#\n"
-                "# Refer to the strongswan.conf(5) manpage for details\n#\n"
-                "# Configuration changes should be made in the included files"
-                "\ncharon {\n\n"
-                "  user = %s\n"
-                "  threads = %d\n"
-                "  send_vendor_id = yes\n"
-                "  starter { load_warning = no }\n\n"
-                "  load_modular = yes\n\n"
-                "  i_dont_care_about_security_and_use_aggressive_mode_psk = yes\n\n"
-                "  plugins {\n    include strongswan.d/charon/*.conf\n  }\n"
-                "  filelog {\n      charon {\n"
-		"        path = /var/log/strongswan.charon.log\n"
-                "        time_format = %%b %%e %%T\n        default = %d\n"
-                "        append = no\n        flush_line = yes\n"
-                "     }\n  }\n",
-                user,
-                nvram_get_int("ipsec_threads_num"), nvram_get_int("ipsec_log_level"));
-    if(0 != rc){
-        if(('n' != samba_prof.dns1[0]) && ('\0' != samba_prof.dns1[0])){
-            fprintf(fp,"\n  dns1=%s\n", samba_prof.dns1);
-        }
-        if(('n' != samba_prof.dns2[0]) && ('\0' != samba_prof.dns2[0])){
-            fprintf(fp,"  dns2=%s\n", samba_prof.dns2);
-        }
-        if(('n' != samba_prof.nbios1[0]) && ('\0' != samba_prof.nbios1[0])){
-            fprintf(fp,"\n\n  nbns1=%s\n", samba_prof.nbios1);
-        }
-        if(('n' != samba_prof.nbios2[0]) && ('\0' != samba_prof.nbios2[0])){
-            fprintf(fp,"  nbns2=%s\n", samba_prof.nbios2);
-        }
-    }
-    fprintf(fp, "\n}#the end of the Charon {\n\n");
-    if(NULL != fp){
-        fclose(fp);
-        run_postconf("strongswan","/etc/strongswan.conf");
-    }
-/*DBG(("[%d]strongswan.conf:\n dns1:%s\n dns2:%s\n wins1=%s\n wins2=%s\n",
-      rc, samba_prof.dns1, samba_prof.dns2, samba_prof.nbios1, samba_prof.nbios2));*/
-    return;
+	fprintf(fp,
+		"charon {\n"
+		"	user = %s\n"
+		"	threads = %d\n"
+		"	send_vendor_id = yes\n"
+		"	interfaces_ignore = %s\n"
+		"	starter { load_warning = no }\n"
+		"	load_modular = yes\n"
+		"	i_dont_care_about_security_and_use_aggressive_mode_psk = yes\n"
+		"	plugins {\n"
+		"		include strongswan.d/charon/*.conf\n"
+		"	}\n"
+		"	filelog {\n"
+		"		charon {\n"
+		"			path = /var/log/strongswan.charon.log\n"
+		"			time_format = %%b %%e %%T\n"
+		"			default = %d\n"
+		"			append = no\n"
+		"			flush_line = yes\n"
+		"		}\n"
+		"	}\n",
+		user,
+		nvram_get_int("ipsec_threads_num") ? : 8,
+		nvram_safe_get("lan_ifname"),
+		nvram_get_int("ipsec_log_level") ? : 1);
+
+	rc = pre_ipsec_samba_prof_set();
+	if (rc != 0) {
+		if (('n' != samba_prof.dns1[0]) && ('\0' != samba_prof.dns1[0]))
+			fprintf(fp,"	dns1=%s\n", samba_prof.dns1);
+		if (('n' != samba_prof.dns2[0]) && ('\0' != samba_prof.dns2[0]))
+			fprintf(fp,"	dns2=%s\n", samba_prof.dns2);
+		if (('n' != samba_prof.nbios1[0]) && ('\0' != samba_prof.nbios1[0]))
+			fprintf(fp,"	nbns1=%s\n", samba_prof.nbios1);
+		if (('n' != samba_prof.nbios2[0]) && ('\0' != samba_prof.nbios2[0]))
+			fprintf(fp,"	nbns2=%s\n", samba_prof.nbios2);
+	}
+
+	fprintf(fp, "}\n");
+	fclose(fp);
+
+	run_postconf("strongswan","/etc/strongswan.conf");
 }
 
 void rc_ipsec_ca2ipsecd_cp(FILE *fp, uint32_t idx)
@@ -619,7 +628,7 @@ void rc_ipsec_start(FILE *fp)
 void rc_ipsec_up(FILE *fp, int prof_idx, ipsec_prof_type_t prof_type)
 {
     if((NULL != fp) && ('\0' != prof[prof_type][prof_idx].profilename[0])){
-        fprintf(fp, "ipsec up %s & \n", prof[prof_type][prof_idx].profilename);
+        //fprintf(fp, "ipsec up %s & \n", prof[prof_type][prof_idx].profilename);
 #if defined(RTCONFIG_QUICKSEC)
 		//fprintf(fp, "quicksecpm -f /tmp/%s.xml -d\n", prof[prof_type][prof_idx].profilename);
 #endif
@@ -969,41 +978,49 @@ void rc_ipsec_ca_init( )
 
 void rc_ipsec_conf_default_init()
 {
-    FILE *fp = NULL;
-    fp = fopen("/tmp/etc/ipsec.conf", "w");
-    fprintf(fp, "# /etc/ipsec.conf\n"
-                "config setup\n\n\n"
-                "conn %%default\n"
-                "  ikelifetime=60m\n"
-                "  keylife=20m\n"
-                "  rekeymargin=3m\n"
-                "  keyingtries=1\n"
-                "  keyexchange=ike\n\n");
-    if(NULL != fp){
-        fclose(fp);
-    }
-    return;
+	FILE *fp;
+
+	fp = fopen("/etc/ipsec.conf", "w");
+	if (fp == NULL)
+		return;
+
+	/* default */
+	fprintf(fp,
+		"config setup\n"
+		"conn %%default\n"
+		"	ikelifetime=60m\n"
+		"	keylife=20m\n"
+		"	rekeymargin=3m\n"
+		"	keyingtries=1\n"
+		"	keyexchange=ike\n"
+		"\n");
+
+	fclose(fp);
 }
 
 void rc_ipsec_psk_xauth_rw_init()
 {
-    FILE *fp = NULL;
-    fp = fopen("/tmp/etc/ipsec.conf", "a+w");
-    fprintf(fp,"#also supports iOS PSK and Shrew on Windows\n"
-                "conn android_xauth_psk\n"
-                "  keyexchange=ikev1\n"
-                "  left=%%defaultroute\n"
-                "  leftauth=psk\n"
-                "  leftsubnet=0.0.0.0/0\n"
-                "  right=%%any\n"
-                "  rightauth=psk\n"
-                "  rightauth2=xauth\n"
-                "  rightsourceip=10.2.1.0/24\n"
-                "  auto=add\n\n");
-    if(NULL != fp){
-        fclose(fp);
-    }
-    return;
+	FILE *fp;
+
+	fp = fopen("/etc/ipsec.conf", "a+w");
+	if (fp == NULL)
+		return;
+
+	/* also supports iOS PSK and Shrew on Windows */
+	fprintf(fp,
+		"conn android_xauth_psk\n"
+		"	keyexchange=ikev1\n"
+		"	left=%%defaultroute\n"
+		"	leftauth=psk\n"
+		"	leftsubnet=0.0.0.0/0\n"
+		"	right=%%any\n"
+		"	rightauth=psk\n"
+		"	rightauth2=xauth\n"
+		"	rightsourceip=10.2.1.0/24\n"
+		"	auto=add\n"
+		"\n");
+
+	fclose(fp);
 }
 
 void rc_ipsec_secrets_set()
@@ -1154,8 +1171,8 @@ void ipsec_conf_local_set(FILE *fp, int prof_idx, ipsec_prof_type_t prof_type)
                    (prof[prof_type][prof_idx].traversal == 1)) ? "yes" : "no"
                 , prof[prof_type][prof_idx].local_public_interface
            );
-    if((0 != prof[prof_type][prof_idx].local_port) && (500 != prof[prof_type][prof_idx].local_port) &&
-       (4500 != prof[prof_type][prof_idx].local_port)){
+    if((0 != prof[prof_type][prof_idx].local_port) && (nvram_get_int("ipsec_isakmp_port") != prof[prof_type][prof_idx].local_port) &&
+       (nvram_get_int("ipsec_nat_t_port") != prof[prof_type][prof_idx].local_port)){
         fprintf(fp, "  leftprotoport=17/%d\n", prof[prof_type][prof_idx].local_port);
     }
     if(IKE_TYPE_AUTO != prof[prof_type][prof_idx].ike){
@@ -1191,8 +1208,8 @@ void ipsec_conf_remote_set(FILE *fp, int prof_idx, ipsec_prof_type_t prof_type)
         fprintf(fp, "  right=%s\n", prof[prof_type][prof_idx].remote_gateway);
     }
 
-    if((0 != prof[prof_type][prof_idx].remote_port) && (500 != prof[prof_type][prof_idx].remote_port) 
-        && (4500 != prof[prof_type][prof_idx].remote_port)){
+    if((0 != prof[prof_type][prof_idx].remote_port) && (nvram_get_int("ipsec_isakmp_port") != prof[prof_type][prof_idx].remote_port) 
+        && (nvram_get_int("ipsec_nat_t_port") != prof[prof_type][prof_idx].remote_port)){
         fprintf(fp, "  rightprotoport=17/%d\n", prof[prof_type][prof_idx].remote_port);
     }
 
@@ -1310,9 +1327,9 @@ void ipsec_conf_phase1_set(FILE *fp, int prof_idx, ipsec_prof_type_t prof_type)
 
 void ipsec_conf_phase2_set(FILE *fp, int prof_idx, ipsec_prof_type_t prof_type)
 {
-	char str[128];
+	char str[1024];
     fprintf(fp, "  keylife=%d\n", prof[prof_type][prof_idx].keylife_p2);
-	fprintf(fp, "  esp=%s!\n", get_ike_esp_bit_convert1(str, sizeof(str), prof[prof_type][prof_idx].encryption_p2_ext, prof[prof_type][prof_idx].hash_p2_ext, 0) + 1);
+	fprintf(fp, "  esp=%s!\n", get_ike_esp_bit_convert1(str, sizeof(str), prof[prof_type][prof_idx].encryption_p2_ext, prof[prof_type][prof_idx].hash_p2_ext, prof[prof_type][prof_idx].pfs_group) + 1);
 	//fprintf(fp, "  esp=%s", get_ike_esp_bit_convert(str, sizeof(str), ENCRYPTION_TYPE_MAX_NUM, prof[prof_type][prof_idx].encryption_p2_ext, FLAG_IKE_ENCRYPT) + 1);
 	//fprintf(fp, "%s\n", get_ike_esp_bit_convert(str, sizeof(str), HASH_TYPE_MAX_NUM, prof[prof_type][prof_idx].hash_p2_ext, FLAG_ESP_HASH));
 
@@ -1404,6 +1421,7 @@ void rc_ipsec_topology_set()
 	            ipsec_conf_phase2_set(fp, i, prof_count);
         	}
 			else	{
+				fprintf(fp,"  ike=%s-%s-%s\n", encryp[ENCRYPTION_TYPE_AES256], hash[HASH_TYPE_SHA1], dh_group[DH_GROUP_2]);
 				fprintf(fp,"  dpdtimeout=30s\n");	
 			}
 			if(DPD_CLEAR == prof[prof_count][i].dead_peer_detection)
@@ -1415,7 +1433,11 @@ void rc_ipsec_topology_set()
 			
 			if(DPD_NONE != prof[prof_count][i].dead_peer_detection)
 				fprintf(fp,"  dpddelay=%ds\n", prof[prof_count][i].ipsec_dpd);
-	        fprintf(fp,"  auto=add\n");
+			
+	        if(VPN_TYPE_NET_NET_CLI == prof[prof_count][i].vpn_type || VPN_TYPE_NET_NET_PEER == prof[prof_count][i].vpn_type)
+				fprintf(fp,"  auto=start\n");
+			else
+		        fprintf(fp,"  auto=add\n");
 	    }
 	}
 	}
@@ -1428,8 +1450,11 @@ void rc_ipsec_topology_set()
 void rc_ipsec_nvram_convert_check(void)
 {
 	int i, prof_count = 0;
-	char buf[SZ_MIN], buf_ext[SZ_MIN];
-	char *nvp=NULL, *b=NULL;
+	char buf[SZ_MIN], buf_ext[SZ_MIN], tmpStr[SZ_MIN];
+	char *nv=NULL, *nvp=NULL, *b=NULL;
+	char *encryption_p1=NULL, *hash_p1=NULL, *dh_group=NULL;
+	char *encryption_p2=NULL, *hash_p2=NULL, *pfs_group=NULL;
+	
 	for(prof_count = PROF_CLI; prof_count < PROF_ALL; prof_count++){
 	    for(i = 1; i <= MAX_PROF_NUM; i++){
 			if(PROF_SVR == prof_count){
@@ -1440,13 +1465,24 @@ void rc_ipsec_nvram_convert_check(void)
 				sprintf(&buf[0], "ipsec_profile_client_%d", i);
 				sprintf(&buf_ext[0], "ipsec_profile_client_%d_ext", i);
 			}
-			if(0 != strcmp(nvram_safe_get(&buf[0]), "") && 0 == strcmp(nvram_safe_get(&buf_ext[0]),"")){
+			if(0 != strcmp(nvram_safe_get(&buf[0]), "")){
+				if(0 == strcmp(nvram_safe_get(&buf_ext[0]),""))	/* if there no ext nvram, filled them. */
+				{
 				nvp = strdup(nvram_safe_get(&buf[0]));
 				b = strsep(&nvp, ">");
 				if(0 == strcmp(b, "4"))
-					nvram_set(&buf_ext[0], "0>0>0>0>0");	/* none */
+					nvram_set(&buf_ext[0], "0>0>0>0>0>0");	/* none */
 				else
-					nvram_set(&buf_ext[0], "6>6>255>6>6");	/* 3des-aes128-sha1-sha256-modp768-modp1024-modp1536-modp2048-modp3072-modp4096-modp6144-modp8192 */
+					nvram_set(&buf_ext[0], "6>6>255>6>6>255");
+				}
+				else	/* if there is ext nvram but format not match, replace them. */
+				{
+					nv = nvp = strdup(nvram_safe_get(&buf_ext[0]));
+					if (vstrsep(nv, ">", &encryption_p1, &hash_p1, &dh_group, &encryption_p2, &hash_p2, &pfs_group) == 6)
+						continue;
+					sprintf(tmpStr, "%s>%s>%s>%s>%s>255", encryption_p1, hash_p1, dh_group, encryption_p2, hash_p2);
+					nvram_set(&buf_ext[0], tmpStr);
+				}
 			}
 
 		}
@@ -1476,14 +1512,6 @@ void rc_ipsec_config_init(void)
     /*ca import*/
     //rc_ipsec_ca_import();
     return;
-}
-void rc_set_ipsec_stack_block_size(void)
-{
-	char command[64];
-	if(NULL != nvram_safe_get("ipsec_stack_block_size")){
-		snprintf(command, sizeof(command), "echo \"%s\" > /tmp/ipsec_stack_block_size", nvram_safe_get("ipsec_stack_block_size"));
-		system(command);
-	}
 }
 #if 0
 static int cur_bitmap_en_scan()
@@ -1637,7 +1665,7 @@ void rc_ipsec_topology_set_XML()
 	qs_virtual_ip_t virtual_ip;
 	char lan_class[32];
 	char *subnet, *subnet_total;
-	
+
     memset(p_tmp, 0, sizeof(char) * SZ_MIN);
 	memset(&virtual_ip, 0, sizeof(qs_virtual_ip_t));
 	memset(alg_buf, 0, sizeof(char)* SZ_64BUF);
@@ -1923,6 +1951,10 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
 	char *local_subnet, *local_subnet_total;
 	int prof_i = 0, is_duplicate = 0;
 	char tmpStr[20];
+/* moved to firewall
+	int isakmp_port = nvram_get_int("ipsec_isakmp_port");
+	int nat_t_port = nvram_get_int("ipsec_nat_t_port");
+*/
 
 	argv[0] = "/bin/sh";
 	argv[1] = FILE_PATH_IPSEC_SH;
@@ -2019,28 +2051,31 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
 				if(IPSEC_CONN_EN_UP == prof[prof_count][i].ipsec_conn_en){
 					if(0 != strcmp(interface,"")){
 						if(VPN_TYPE_HOST_NET == prof[prof_count][i].vpn_type){
+							/* Host to Net */
 							for(unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; ++unit){
 								sprintf(tmpStr,"wan%d_gw_ifname",unit);
 								if(0 != strlen(nvram_safe_get(tmpStr)))
 									strcpy(interface,nvram_safe_get(tmpStr));
+								/* moved to firewall
 								fprintf(fp1, "iptables -D INPUT -i %s --protocol esp -j ACCEPT\n", interface);
 								fprintf(fp1, "iptables -D INPUT -i %s --protocol ah -j ACCEPT\n", interface);
-								fprintf(fp1, "iptables -D INPUT -i %s -p udp --dport 500 -j ACCEPT\n", interface);
-								fprintf(fp1, "iptables -D INPUT -i %s -p udp --dport 4500 -j ACCEPT\n", interface);
+								fprintf(fp1, "iptables -D INPUT -i %s -p udp --dport %d -j ACCEPT\n", interface, isakmp_port);
+								fprintf(fp1, "iptables -D INPUT -i %s -p udp --dport %d -j ACCEPT\n", interface, nat_t_port);
 								fprintf(fp1, "iptables -I INPUT -i %s --protocol esp -j ACCEPT\n", interface);
 								fprintf(fp1, "iptables -I INPUT -i %s --protocol ah -j ACCEPT\n", interface);
-								fprintf(fp1, "iptables -I INPUT -i %s -p udp --dport 500 -j ACCEPT\n", interface);
-								fprintf(fp1, "iptables -I INPUT -i %s -p udp --dport 4500 -j ACCEPT\n", interface);
+								fprintf(fp1, "iptables -I INPUT -i %s -p udp --dport %d -j ACCEPT\n", interface, isakmp_port);
+								fprintf(fp1, "iptables -I INPUT -i %s -p udp --dport %d -j ACCEPT\n", interface, nat_t_port);
 								fprintf(fp1, "iptables -D OUTPUT -o %s --protocol esp -j ACCEPT\n", interface);
 								fprintf(fp1, "iptables -D OUTPUT -o %s --protocol ah -j ACCEPT\n", interface);
-								fprintf(fp1, "iptables -D OUTPUT -o %s -p udp --sport 500 -j ACCEPT\n", interface);
-								fprintf(fp1, "iptables -D OUTPUT -o %s -p udp --sport 4500 -j ACCEPT\n", interface);
+								fprintf(fp1, "iptables -D OUTPUT -o %s -p udp --sport %d -j ACCEPT\n", interface, isakmp_port);
+								fprintf(fp1, "iptables -D OUTPUT -o %s -p udp --sport %d -j ACCEPT\n", interface, nat_t_port);
 								fprintf(fp1, "iptables -I OUTPUT -o %s --protocol esp -j ACCEPT\n", interface);
 								fprintf(fp1, "iptables -I OUTPUT -o %s --protocol ah -j ACCEPT\n", interface);
-								fprintf(fp1, "iptables -I OUTPUT -o %s -p udp --sport 500 -j ACCEPT\n", interface);
-								fprintf(fp1, "iptables -I OUTPUT -o %s -p udp --sport 4500 -j ACCEPT\n", interface);
+								fprintf(fp1, "iptables -I OUTPUT -o %s -p udp --sport %d -j ACCEPT\n", interface, isakmp_port);
+								fprintf(fp1, "iptables -I OUTPUT -o %s -p udp --sport %d -j ACCEPT\n", interface, nat_t_port);
 								fprintf(fp1, "iptables -D INPUT -i %s -s %s -j ACCEPT\n",interface, prof[prof_count][i].virtual_subnet);
 								fprintf(fp1, "iptables -I INPUT -i %s -s %s -j ACCEPT\n",interface, prof[prof_count][i].virtual_subnet);
+								*/
 #ifdef RTCONFIG_BCMARM
 								/* mark connect to bypass CTF */
 								if (nvram_match("ctf_disable", "0")){
@@ -2058,26 +2093,31 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
 							fprintf(fp1, "iptables -t mangle -A FORWARD -m policy --pol ipsec --dir out -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss 1361:1536 -j TCPMSS --set-mss 1360\n");
 						}
 						else{
+							/* Net to Net */
+							/* moved to firewall
 							fprintf(fp1, "iptables -D INPUT -i %s --protocol esp -j ACCEPT\n", interface);
 							fprintf(fp1, "iptables -D INPUT -i %s --protocol ah -j ACCEPT\n", interface);
-							fprintf(fp1, "iptables -D INPUT -i %s -p udp --dport 500 -j ACCEPT\n", interface);
-							fprintf(fp1, "iptables -D INPUT -i %s -p udp --dport 4500 -j ACCEPT\n", interface);
+							fprintf(fp1, "iptables -D INPUT -i %s -p udp --dport %d -j ACCEPT\n", interface, isakmp_port);
+							fprintf(fp1, "iptables -D INPUT -i %s -p udp --dport %d -j ACCEPT\n", interface, nat_t_port);
 							fprintf(fp1, "iptables -I INPUT -i %s --protocol esp -j ACCEPT\n", interface);
 							fprintf(fp1, "iptables -I INPUT -i %s --protocol ah -j ACCEPT\n", interface);
-							fprintf(fp1, "iptables -I INPUT -i %s -p udp --dport 500 -j ACCEPT\n", interface);
-							fprintf(fp1, "iptables -I INPUT -i %s -p udp --dport 4500 -j ACCEPT\n", interface);
+							fprintf(fp1, "iptables -I INPUT -i %s -p udp --dport %d -j ACCEPT\n", interface, isakmp_port);
+							fprintf(fp1, "iptables -I INPUT -i %s -p udp --dport %d -j ACCEPT\n", interface, nat_t_port);
 							fprintf(fp1, "iptables -D OUTPUT -o %s --protocol esp -j ACCEPT\n", interface);
 							fprintf(fp1, "iptables -D OUTPUT -o %s --protocol ah -j ACCEPT\n", interface);
-							fprintf(fp1, "iptables -D OUTPUT -o %s -p udp --sport 500 -j ACCEPT\n", interface);
-							fprintf(fp1, "iptables -D OUTPUT -o %s -p udp --sport 4500 -j ACCEPT\n", interface);
+							fprintf(fp1, "iptables -D OUTPUT -o %s -p udp --sport %d -j ACCEPT\n", interface, isakmp_port);
+							fprintf(fp1, "iptables -D OUTPUT -o %s -p udp --sport %d -j ACCEPT\n", interface, nat_t_port);
 							fprintf(fp1, "iptables -I OUTPUT -o %s --protocol esp -j ACCEPT\n", interface);
 							fprintf(fp1, "iptables -I OUTPUT -o %s --protocol ah -j ACCEPT\n", interface);
-							fprintf(fp1, "iptables -I OUTPUT -o %s -p udp --sport 500 -j ACCEPT\n", interface);
-							fprintf(fp1, "iptables -I OUTPUT -o %s -p udp --sport 4500 -j ACCEPT\n", interface);
+							fprintf(fp1, "iptables -I OUTPUT -o %s -p udp --sport %d -j ACCEPT\n", interface, isakmp_port);
+							fprintf(fp1, "iptables -I OUTPUT -o %s -p udp --sport %d -j ACCEPT\n", interface, nat_t_port);
+							*/
 							local_subnet_total = strdup(prof[prof_count][i].local_subnet);
 							while((local_subnet = strsep(&local_subnet_total, ",")) != NULL){
+								/* moved to firewall
 								fprintf(fp1, "iptables -t nat -D POSTROUTING -s %s -m policy --dir out --pol ipsec -j ACCEPT\n", local_subnet);
 								fprintf(fp1, "iptables -t nat -I POSTROUTING -s %s -m policy --dir out --pol ipsec -j ACCEPT\n", local_subnet);
+								*/
 #ifdef RTCONFIG_BCMARM
 								/* mark connect to bypass CTF */
 								if (nvram_match("ctf_disable", "0")){
@@ -2099,7 +2139,8 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
 						//cur_bitmap_en = cur_bitmap_en_scan();
 						get_bitmap_scan((int *) cur_bitmap_en_p);
 						if(0 != strcmp(interface,"")){
-							/*fprintf(fp, "iptables -D INPUT -i %s --protocol esp -j ACCEPT\n", interface);
+							/* moved to firewall
+							fprintf(fp, "iptables -D INPUT -i %s --protocol esp -j ACCEPT\n", interface);
 							fprintf(fp, "iptables -D INPUT -i %s --protocol ah -j ACCEPT\n", interface);
 							fprintf(fp, "iptables -D INPUT -i %s -p udp --dport 500 -j ACCEPT\n", interface);
 							fprintf(fp, "iptables -D INPUT -i %s -p udp --dport 4500 -j ACCEPT\n", interface);
@@ -2114,11 +2155,14 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
 							fprintf(fp, "iptables -I OUTPUT -o %s --protocol esp -j ACCEPT\n", interface);
 							fprintf(fp, "iptables -I OUTPUT -o %s --protocol ah -j ACCEPT\n", interface);
 							fprintf(fp, "iptables -I OUTPUT -o %s -p udp --sport 500 -j ACCEPT\n", interface);
-							fprintf(fp, "iptables -I OUTPUT -o %s -p udp --sport 4500 -j ACCEPT\n", interface);*/
+							fprintf(fp, "iptables -I OUTPUT -o %s -p udp --sport 4500 -j ACCEPT\n", interface);
+							*/
 
 						if(VPN_TYPE_HOST_NET == prof[prof_count][i].vpn_type){
-							/*fprintf(fp, "iptables -D INPUT -i %s -s %s -j ACCEPT\n",interface,prof[prof_count][i].virtual_subnet);
-							fprintf(fp, "iptables -I INPUT -i %s -s %s -j ACCEPT\n",interface,prof[prof_count][i].virtual_subnet);*/
+							/* moved to firewall
+							fprintf(fp, "iptables -D INPUT -i %s -s %s -j ACCEPT\n",interface,prof[prof_count][i].virtual_subnet);
+							fprintf(fp, "iptables -I INPUT -i %s -s %s -j ACCEPT\n",interface,prof[prof_count][i].virtual_subnet);
+							*/
 #ifdef RTCONFIG_BCMARM
 							/* mark connect to bypass CTF */
 							/*if (nvram_match("ctf_disable", "0")){
@@ -2132,8 +2176,10 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
 						else{
 							local_subnet_total = strdup(prof[prof_count][i].local_subnet);
 							while((local_subnet = strsep(&local_subnet_total, ",")) != NULL){
-								/*fprintf(fp, "iptables -t nat -D POSTROUTING -s %s -m policy --dir out --pol ipsec -j ACCEPT\n", local_subnet);
-								fprintf(fp, "iptables -t nat -I POSTROUTING -s %s -m policy --dir out --pol ipsec -j ACCEPT\n", local_subnet);*/
+								/* moved to firewall
+								fprintf(fp, "iptables -t nat -D POSTROUTING -s %s -m policy --dir out --pol ipsec -j ACCEPT\n", local_subnet);
+								fprintf(fp, "iptables -t nat -I POSTROUTING -s %s -m policy --dir out --pol ipsec -j ACCEPT\n", local_subnet);
+								*/
 #ifdef RTCONFIG_BCMARM
 								/* mark connect to bypass CTF */
 								/*if (nvram_match("ctf_disable", "0")){
@@ -2161,14 +2207,16 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
 						}
     				}
 					if(0 == is_duplicate){
-						/*fprintf(fp, "iptables -D INPUT -i %s --protocol esp -j ACCEPT\n", interface);
+						/* moved to firewall
+						fprintf(fp, "iptables -D INPUT -i %s --protocol esp -j ACCEPT\n", interface);
 						fprintf(fp, "iptables -D INPUT -i %s --protocol ah -j ACCEPT\n", interface);
 						fprintf(fp, "iptables -D INPUT -i %s -p udp --dport 500 -j ACCEPT\n", interface);
 						fprintf(fp, "iptables -D INPUT -i %s -p udp --dport 4500 -j ACCEPT\n", interface); 
 						fprintf(fp, "iptables -D OUTPUT -o %s --protocol esp -j ACCEPT\n", interface);
 						fprintf(fp, "iptables -D OUTPUT -o %s --protocol ah -j ACCEPT\n", interface);
 						fprintf(fp, "iptables -D OUTPUT -o %s -p udp --sport 500 -j ACCEPT\n", interface);
-						fprintf(fp, "iptables -D OUTPUT -o %s -p udp --sport 4500 -j ACCEPT\n", interface);*/
+						fprintf(fp, "iptables -D OUTPUT -o %s -p udp --sport 4500 -j ACCEPT\n", interface);
+						*/
 					}
 					rc_ipsec_down(fp, i, prof_count);
 				}
@@ -2198,7 +2246,7 @@ void rc_ipsec_set(ipsec_conn_status_t conn_status, ipsec_prof_type_t prof_type)
     if(NULL != fp){
         fclose(fp);
     }
-#if defined(RTCONFIG_SOC_IPQ8064)		
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
 	reinit_ecm(-1);
 #endif
 	DBG(("rc_ipsec_down_stat<<<< CLI: 0x%x, SVR: 0x%x\n", cur_bitmap_en_p[PROF_CLI],cur_bitmap_en_p[PROF_SVR]));

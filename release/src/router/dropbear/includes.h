@@ -25,6 +25,8 @@
 #ifndef DROPBEAR_INCLUDES_H_
 #define DROPBEAR_INCLUDES_H_
 
+/* uclibc needs _GNU_SOURCE, maybe other things? */
+#define _GNU_SOURCE
 
 #include "options.h"
 #include "debug.h"
@@ -56,10 +58,7 @@
 #include <stdarg.h>
 #include <dirent.h>
 #include <time.h>
-
-#ifdef RTCONFIG_PROTECTION_SERVER
-#include <libptcsrv.h>
-#endif
+#include <setjmp.h>
 
 #ifdef HAVE_UTMP_H
 #include <utmp.h>
@@ -127,6 +126,10 @@
 #include <sys/uio.h>
 #endif
 
+#ifdef HAVE_SYS_RANDOM_H
+#include <sys/random.h>
+#endif
+
 #ifdef BUNDLED_LIBTOM
 #include "libtomcrypt/src/headers/tomcrypt.h"
 #include "libtommath/tommath.h"
@@ -134,7 +137,6 @@
 #include <tomcrypt.h>
 #include <tommath.h>
 #endif
-
 
 #include "compat.h"
 
@@ -159,12 +161,22 @@ typedef unsigned int u_int32_t;
 typedef u_int32_t uint32_t;
 #endif /* HAVE_UINT32_T */
 
+#ifndef SIZE_T_MAX
+#define SIZE_T_MAX ULONG_MAX
+#endif /* SIZE_T_MAX */
+
 #ifdef HAVE_LINUX_PKT_SCHED_H
 #include <linux/types.h>
 #include <linux/pkt_sched.h>
 #endif
 
+#if DROPBEAR_PLUGIN
+#include <dlfcn.h>
+#endif
+
 #include "fake-rfc2553.h"
+
+#include "fuzz.h"
 
 #ifndef LOG_AUTHPRIV
 #define LOG_AUTHPRIV LOG_AUTH
@@ -178,6 +190,10 @@ typedef u_int32_t uint32_t;
 # define UNUSED(x) /*@unused@*/ x 
 #else 
 # define UNUSED(x) x 
+#endif
+
+#ifdef SECURITY_NOTIFY
+#include <libptcsrv.h>
 #endif
 
 #endif /* DROPBEAR_INCLUDES_H_ */

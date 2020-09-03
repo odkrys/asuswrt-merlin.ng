@@ -64,6 +64,8 @@
 #include <search.h>
 #endif
 
+#include <json.h>
+
 int
 ej_get_leases_array(int eid, webs_t wp, int argc, char_t **argv)
 {
@@ -677,6 +679,11 @@ int ej_tcclass_dump_array(int eid, webs_t wp, int argc, char_t **argv) {
 	FILE *fp;
 	int ret = 0;
 	char tmp[64];
+#ifdef RTAX58U
+	char *wan_ifname = "eth4";
+#else
+	char *wan_ifname = "eth0";
+#endif
 
 	if (nvram_get_int("qos_enable") == 0) {
 		ret += websWrite(wp, "var tcdata_lan_array = [[]];\nvar tcdata_wan_array = [[]];\n");
@@ -700,7 +707,7 @@ int ej_tcclass_dump_array(int eid, webs_t wp, int argc, char_t **argv) {
 	}
 
 	if (nvram_get_int("qos_type") != 2) {	// Must not be BW Limiter
-		snprintf(tmp, sizeof(tmp), "tc -s class show dev %s > /tmp/tcclass.txt", "eth0");
+		snprintf(tmp, sizeof(tmp), "tc -s class show dev %s > /tmp/tcclass.txt", wan_ifname);
 		system(tmp);
 
 	        ret += websWrite(wp, "var tcdata_wan_array = [\n");
@@ -1040,7 +1047,7 @@ int ej_connlist_array(int eid, webs_t wp, int argc, char **argv) {
 	FILE *fp;
 	char line[100];
 	int firstline = 1;
-	char proto[4], address[16], dest[16], state[15], port1[6], port2[6];
+	char proto[6], address[16], dest[16], state[15], port1[6], port2[6];
 	int ret = 0;
 
 	ret += websWrite(wp, "var connarray = [");
@@ -1058,14 +1065,25 @@ int ej_connlist_array(int eid, webs_t wp, int argc, char **argv) {
 			firstline = 0;
 			continue;
 		}
-                if (sscanf(line,
-			"%3s%*[ \t]"
-			"%15[0-9.]%*[:]"
-			"%5s%*[ \t]"
-			"%15[0-9.]%*[:]"
-			"%5s%*[ \t]"
-			"%14s%*[ \t]",
-		    proto, address, port1, dest, port2, state) < 6) continue;
+		if (!strncmp(line,"icmp",4)) {
+			if (sscanf(line,
+			    "%5s%*[ \t]"
+			    "%15[0-9.]%*[ \t]"
+			    "%15[0-9.]%*[ \t]",
+			    proto, address, dest) != 3) continue;
+			state[0] = '\0';
+			port2[0] = '\0';
+			port1[0] = '\0';
+		} else {
+			if (sscanf(line,
+			    "%5s%*[ \t]"
+			    "%15[0-9.]%*[:]"
+			    "%5s%*[ \t]"
+			    "%15[0-9.]%*[:]"
+			    "%5s%*[ \t]"
+			    "%14s%*[ \t]",
+			    proto, address, port1, dest, port2, state) != 6) continue;
+		}
 
 		ret += websWrite(wp, "[\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"],\n",
 		                      proto, address, port1, dest, port2, state);
@@ -1211,3 +1229,54 @@ void _fix_TM_ipv6(char* str) {
 		strcat(str,"00");
 }
 #endif
+
+
+int ej_get_custom_settings(int eid, webs_t wp, int argc, char **argv_) {
+
+	struct json_object *settings_obj;
+	int ret = 0;
+	char line[3040];
+	char name[30];
+	char value[3000];
+	FILE *fp;
+
+	fp = fopen("/jffs/addons/custom_settings.txt", "r");
+	if (fp == NULL) {
+		ret += websWrite(wp," new Object()");
+		return 0;
+	}
+
+	settings_obj = json_object_new_object();
+	while (fgets(line, sizeof(line), fp)) {
+		if (sscanf(line,"%29s%*[ ]%2999s%*[ \n]",name, value) == 2) {
+			json_object_object_add(settings_obj, name, json_object_new_string(value));
+		}
+	}
+	fclose(fp);
+
+	ret += websWrite(wp, "%s", json_object_to_json_string(settings_obj));
+
+	json_object_put(settings_obj);
+	return ret;
+}
+
+
+void write_custom_settings(char *jstring) {
+	char line[3040];
+	FILE *fp;
+	struct json_object *settings_obj;
+
+	settings_obj = json_tokener_parse(jstring);
+	if (!settings_obj) return;
+
+	fp = fopen("/jffs/addons/custom_settings.txt", "w");
+	if (!fp) return;
+
+	json_object_object_foreach(settings_obj, key, val) {
+		snprintf(line, sizeof(line), "%s %s\n", key, json_object_get_string(val));
+		fwrite(line, 1, strlen(line), fp);
+	}
+	fclose(fp);
+
+	json_object_put(settings_obj);
+}

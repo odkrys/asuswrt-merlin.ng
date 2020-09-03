@@ -1,13 +1,16 @@
 var noti_auth_mode_2g = "";
 var noti_auth_mode_5g = "";
+var noti_auth_mode_5g2 = "";
 
 if(isSwMode('rt') || isSwMode('ap') || '<% nvram_get("wlc_band"); %>' == ''){
 	noti_auth_mode_2g = '<% nvram_get("wl0_auth_mode_x"); %>';
 	noti_auth_mode_5g = '<% nvram_get("wl1_auth_mode_x"); %>';
+	noti_auth_mode_5g2 = '<% nvram_get("wl2_auth_mode_x"); %>';
 }
 else if(isSwMode('mb')){
 	noti_auth_mode_2g = '';
 	noti_auth_mode_5g = '';
+	noti_auth_mode_5g2 = "";
 }
 else{
 	noti_auth_mode_2g = ('<% nvram_get("wlc_band"); %>' == 0) ? '<% nvram_get("wl0.1_auth_mode_x"); %>' : '<% nvram_get("wl0_auth_mode_x"); %>';
@@ -19,7 +22,7 @@ else{
 	}
 }
 
-var webs_state_info = '<% nvram_get("webs_state_info"); %>';
+var webs_state_info = '<% nvram_get("webs_state_info_am"); %>';
 var webs_state_info_beta = '<% nvram_get("webs_state_info_beta"); %>';
 var webs_state_flag = '<% nvram_get("webs_state_flag"); %>';
 
@@ -33,7 +36,7 @@ var autodet_state = '<% nvram_get("autodet_state"); %>';
 var autodet_auxstate = '<% nvram_get("autodet_auxstate"); %>';
 var wan_proto = '<% nvram_get("wan0_proto"); %>';
 // MODELDEP : DSL-AC68U Only for now
-if(based_modelid == "DSL-AC68U"){
+if(based_modelid == "DSL-AC68U" || based_modelid == "DSL-AX82U"){
 	var dla_modified = (vdsl_support == false) ? "0" :'<% nvram_get("dsltmp_dla_modified"); %>';	
 	var dsl_loss_sync = "";
 	if(dla_modified == "1")
@@ -71,7 +74,7 @@ if(dsl_support){
 }
 
 var aimesh_system_new_fw_flag = false;
-if(amesh_support) {
+if(amesh_support && ameshRouter_support) {
 	var get_cfg_clientlist = [<% get_cfg_clientlist(); %>][0];
 	for (var idx in get_cfg_clientlist) {
 		if(get_cfg_clientlist.hasOwnProperty(idx)) {
@@ -97,6 +100,7 @@ var notification = {
 	upgrade: 0,
 	wifi_2g: 0,
 	wifi_5g: 0,
+	wifi_5g2: 0,
 	ftp: 0,
 	samba: 0,
 	loss_sync: 0,
@@ -104,6 +108,8 @@ var notification = {
 	notif_hint: 0,
 	mobile_traffic: 0,
 	send_debug_log: 0,
+	low_nvram: 0,
+	low_jffs: 0,
 	clicking: 0,
 	sim_record: 0,
 	redirectftp:function(){location.href = 'Advanced_AiDisk_ftp.asp';},
@@ -120,7 +126,7 @@ var notification = {
 	ie_legacy: 0,
 	notiClick: function(){
 		// stop flashing after the event is checked.
-		cookie.set("notification_history", [notification.upgrade, notification.wifi_2g ,notification.wifi_5g ,notification.ftp ,notification.samba ,notification.loss_sync ,notification.experience_FB ,notification.notif_hint, notification.mobile_traffic, notification.send_debug_log, notification.sim_record, notification.pppoe_tw, notification.pppoe_tw_static, notification.ie_legacy].join(), 1000);
+		cookie.set("notification_history", [notification.upgrade, notification.wifi_2g ,notification.wifi_5g ,notification.wifi_5g2 ,notification.ftp ,notification.samba ,notification.loss_sync ,notification.experience_FB ,notification.notif_hint, notification.mobile_traffic, notification.send_debug_log, notification.sim_record, notification.pppoe_tw, notification.pppoe_tw_static, notification.ie_legacy, notification.low_nvram, notification.low_jffs].join(), 1000);
 		clearInterval(notification.flashTimer);
 		document.getElementById("notification_status").className = "notification_on";
 		if(notification.clicking == 0){
@@ -128,35 +134,52 @@ var notification = {
 
 			for(i=0; i<notification.array.length; i++){
 				if(notification.array[i] != null && notification.array[i] != "off"){
-					if(i == 3 && notification.array[2] != null && notification.array[2] != "off")//filter 5G when 2G have notification
-						continue;
+					if(notification.array[2] != null && notification.array[2] != "off"){//filter 5G when 2G have notification
+						if(i == 3 || i == 19)
+							continue;
+					}
+					else if(i == 19 && notification.array[3] != null && notification.array[3] != "off"){
+							continue;
+					}
 
 						txt += '<tr><td><table id="notiDiv_table3" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#232629">';
 		  			txt += '<tr><td><table id="notiDiv_table5" border="0" cellpadding="5" cellspacing="0" bgcolor="#232629" width="100%">';
 		  			txt += '<tr><td valign="TOP" width="100%"><div style="white-space:pre-wrap;font-size:13px;color:white;cursor:text">' + notification.desc[i] + '</div>';
 		  			txt += '</td></tr>';
 
-		  			if( i == 2 ){					  				
+					if( i == 2 ){
 		  				txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[i] + '">' + notification.action_desc[i] + '</div></td></tr>';
 		  				if(band5g_support && notification.array[3] != null && notification.array[3] != "off"){
 		  						txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[i+1] + '">' + notification.action_desc[i+1] + '</div></td></tr>';
 		  				}else
 			  				notification.array[3] = "off";
-		  			}
-						else if( i == 7){
-							if(notification.array[18] != null){
-								txt += '<tr><td width="100%"><div style="text-align:right;text-decoration:underline;color:#FFCC00;font-size:14px;"><span style="cursor: pointer" onclick="' + notification.clickCallBack[18] + '">' + notification.action_desc[18] + '</span>';
-							}								
-							txt += '<span style="margin-left:10px;cursor: pointer" onclick="' + notification.clickCallBack[i] + '">' + notification.action_desc[i] + '</span></div></td></tr>';
-							notification.array[18] = "off";
+
+						if(band5g2_support && notification.array[19] != null && notification.array[19] != "off"){
+								txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[19] + '">' + notification.action_desc[19] + '</div></td></tr>';
+						}else
+							notification.array[19] = "off";
+					}
+					else if( i == 3 ){
+						txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[i] + '">' + notification.action_desc[i] + '</div></td></tr>';
+						if(band5g2_support && notification.array[19] != null && notification.array[19] != "off"){
+								txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[19] + '">' + notification.action_desc[19] + '</div></td></tr>';
+						}else
+							notification.array[19] = "off";
+					}
+					else if( i == 7){
+						if(notification.array[18] != null){
+							txt += '<tr><td width="100%"><div style="text-align:right;text-decoration:underline;color:#FFCC00;font-size:14px;"><span style="cursor: pointer" onclick="' + notification.clickCallBack[18] + '">' + notification.action_desc[18] + '</span>';
 						}
-						else if( i == 9){
-		  				txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[i] + '">' + notification.action_desc[i] + '</div></td></tr>';
-							if(notification.array[10] != null && notification.array[10] != "off"){
-								txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[i+1] + '">' + notification.action_desc[i+1] + '</div></td></tr>';
-							}		
-							notification.array[10] = "off";
+						txt += '<span style="margin-left:10px;cursor: pointer" onclick="' + notification.clickCallBack[i] + '">' + notification.action_desc[i] + '</span></div></td></tr>';
+						notification.array[18] = "off";
+					}
+					else if( i == 9){
+						txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[i] + '">' + notification.action_desc[i] + '</div></td></tr>';
+						if(notification.array[10] != null && notification.array[10] != "off"){
+							txt += '<tr><td width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[i+1] + '">' + notification.action_desc[i+1] + '</div></td></tr>';
 						}
+						notification.array[10] = "off";
+					}
 		  			else{
 	  					txt += '<tr><td><table width="100%"><div style="text-decoration:underline;text-align:right;color:#FFCC00;font-size:14px;cursor: pointer" onclick="' + notification.clickCallBack[i] + '">' + notification.action_desc[i] + '</div></table></td></tr>';
 		  			}
@@ -207,7 +230,7 @@ var notification = {
 		}
 		else if(notification.stat == "on" && !notification.mobile_traffic && !notification.sim_record && !notification.upgrade && !notification.wifi_2g &&
 				!notification.wifi_5g && !notification.ftp && !notification.samba && !notification.loss_sync && !notification.experience_FB && !notification.notif_hint && !notification.mobile_traffic && 
-				!notification.send_debug_log && !notification.pppoe_tw && !notification.pppoe_tw_static && !notification.ie_legacy){
+				!notification.send_debug_log && !notification.pppoe_tw && !notification.pppoe_tw_static && !notification.ie_legacy && !notification.low_nvram && !notification.low_jffs){
 			cookie.unset("notification_history");
 			clearInterval(notification.flashTimer);
 			document.getElementById("notification_status").className = "notification_off";
@@ -226,7 +249,7 @@ var notification = {
 		}else
 			notification.acpw = 0;
 
-		if(amesh_support) {
+		if(amesh_support && ameshRouter_support) {
 			if(aimesh_system_new_fw_flag) {
 				notification.array[1] = 'noti_upgrade';
 				notification.upgrade = 1;
@@ -241,14 +264,14 @@ var notification = {
 			if(webs_state_flag == 1 || webs_state_flag == 2){
 				notification.array[1] = 'noti_upgrade';
 				notification.upgrade = 1;
-				notification.desc[1] = '<#ASUSGATE_note2#>';
+				notification.desc[1] = 'A new firmware version ('+webs_state_info.replace('_','.').replace('_0','')+') is now available.';
 				if(!live_update_support || !HTTPS_support){
 					notification.action_desc[1] = '<a id="link_to_downlodpage" target="_blank" href="'+get_helplink()+'" style="color:#FFCC00;"><#ASUSGATE_act_update#></a>';
 					notification.clickCallBack[1] = "";
 				}
 				else{
 					notification.action_desc[1] = '<#ASUSGATE_act_update#>';
-					notification.clickCallBack[1] = "location.href = 'Advanced_FirmwareUpgrade_Content.asp?confirm_show="+current_firmware_path+"';"
+					notification.clickCallBack[1] = "location.href = 'Advanced_FirmwareUpgrade_Content.asp?confirm_show=0'";
 				}
 			}else
 				notification.upgrade = 0;
@@ -267,10 +290,22 @@ var notification = {
 				notification.array[3] = 'noti_wifi_5g';
 				notification.wifi_5g = 1;
 				notification.desc[3] = '<#ASUSGATE_note3#>';
-				notification.action_desc[3] = '<#ASUSGATE_act_change#> (5 GHz)';
+				if(band5g2_support)
+					notification.action_desc[3] = '<#ASUSGATE_act_change#> (5GHz-1)';
+				else
+					notification.action_desc[3] = '<#ASUSGATE_act_change#> (5GHz)';
 				notification.clickCallBack[3] = "change_wl_unit_status(1);";
 		}else
 			notification.wifi_5g = 0;
+
+		if(band5g2_support && sw_mode != 4 && noti_auth_mode_5g2 == 'open'){	//case3-3
+				notification.array[19] = 'noti_wifi_5g2';
+				notification.wifi_5g2 = 1;
+				notification.desc[19] = '<#ASUSGATE_note3#>';
+				notification.action_desc[19] = '<#ASUSGATE_act_change#> (5GHz-2)';
+				notification.clickCallBack[19] = "change_wl_unit_status(2);";
+		}else
+			notification.wifi_5g2 = 0;
 		
 		if(usb_support && !noftp_support && enable_ftp == 1 && st_ftp_mode == 1 && st_ftp_force_mode == '' ){ //case4_1
 				notification.array[4] = 'noti_ftp';
@@ -386,8 +421,31 @@ var notification = {
 			notification.action_desc[15] = '<#CHT_ppp_notice_2#>';
 			notification.clickCallBack[15] = "location.href = 'Advanced_WAN_Content.asp?af=wan_proto'";			
 		}
-		
-		if( notification.acpw || notification.upgrade || notification.wifi_2g || notification.wifi_5g || notification.ftp || notification.samba || notification.loss_sync || notification.experience_FB || notification.notif_hint || notification.send_debug_log || notification.mobile_traffic || notification.sim_record || notification.pppoe_tw || notification.pppoe_tw_static || notification.ie_legacy){
+		// Low NVRAM
+		if((<% sysinfo("nvram.total"); %> - <% sysinfo("nvram.used"); %>) < 3000){
+			notification.array[17] = 'noti_low_nvram';
+			notification.low_nvram = 1;
+			notification.desc[17] = "Your router is running low on free NVRAM, which might affect its stability.<br>Review long parameter lists (like DHCP reservations), or consider doing a factory default reset and reconfiguring.";
+			notification.action_desc[17] = "Review System Information now";
+			notification.clickCallBack[17] = "location.href = 'Tools_Sysinfo.asp';"
+		}else
+			notification.low_nvram = 0;
+
+		// Low JFFS
+		var jffs_free = "<% sysinfo("jffs.free"); %>";
+		if(jffs_free < 3){
+			notification.array[18] = 'noti_low_jffs';
+			notification.low_jffs = 1;
+			if(jffs_free == -1)
+				notification.desc[18] = "Your router was unable to mount the JFFS partition, which will prevent it from working correctly.  Try rebooting it.";
+			else
+				notification.desc[18] = "Your router is running low on free JFFS storage, which might affect its stability.<br>Review the content of the /jffs directory on your router.";
+			notification.action_desc[18] = "Review System Information now";
+			notification.clickCallBack[18] = "location.href = 'Tools_Sysinfo.asp';"
+		}else
+			notification.low_jffs = 0;
+
+		if( notification.acpw || notification.upgrade || notification.wifi_2g || notification.wifi_5g || notification.wifi_5g2 || notification.ftp || notification.samba || notification.loss_sync || notification.experience_FB || notification.notif_hint || notification.send_debug_log || notification.mobile_traffic || notification.sim_record || notification.pppoe_tw || notification.pppoe_tw_static || notification.ie_legacy || notification.low_nvram || notification.low_jffs){
 			notification.stat = "on";
 			notification.flash = "on";
 			notification.run_notice();
@@ -408,7 +466,7 @@ var notification = {
 			tarObj1.className = "notification_on1";
 		}
 
-		if(this.flash == "on" && cookie.get("notification_history") != [notification.upgrade, notification.wifi_2g ,notification.wifi_5g ,notification.ftp ,notification.samba ,notification.loss_sync ,notification.experience_FB ,notification.notif_hint, notification.mobile_traffic, notification.send_debug_log, notification.sim_record, notification.pppoe_tw, notification.pppoe_tw_static, notification.ie_legacy].join()){
+		if(this.flash == "on" && cookie.get("notification_history") != [notification.upgrade, notification.wifi_2g ,notification.wifi_5g ,notification.ftp ,notification.samba ,notification.loss_sync ,notification.experience_FB ,notification.notif_hint, notification.mobile_traffic, notification.send_debug_log, notification.sim_record, notification.pppoe_tw, notification.pppoe_tw_static, notification.ie_legacy, notification.low_nvram, notification.low_jffs].join()){
 			notification.flashTimer = setInterval(function(){
 				tarObj.className = (tarObj.className == "notification_on") ? "notification_off" : "notification_on";
 			}, 1000);
@@ -424,6 +482,7 @@ var notification = {
 		this.upgrade = 0;
 		this.wifi_2g = 0;
 		this.wifi_5g = 0;
+		this.wifi_5g2 = 0;
 		this.ftp = 0;
 		this.samba = 0;
 		this.loss_sync = 0;
@@ -431,6 +490,8 @@ var notification = {
 		this.notif_hint = 0;
 		this.mobile_traffic = 0;
 		this.send_debug_log = 0;
+		this.low_nvram = 0;
+		this.low_jffs = 0;
 		this.sim_record = 0;
 		this.action_desc = [];
 		this.desc = [];

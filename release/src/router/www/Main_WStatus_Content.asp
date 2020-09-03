@@ -16,6 +16,7 @@
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <style>
 .wifiheader{
@@ -54,9 +55,59 @@ var dfs_statusarray = [];
 
 <% get_wl_status(); %>;
 
-var nvram_dump_String = function(){/*
-<% nvram_dump("wlan11b_2g.log",""); %>
-*/}.toString().slice(14,-3);
+var guestnames = [];
+guestnames.push(["<% nvram_get("wl0.1_ssid"); %>",
+                 "<% nvram_get("wl0.2_ssid"); %>",
+                 "<% nvram_get("wl0.3_ssid"); %>"]);
+if (band5g_support) {
+	guestnames.push(["<% nvram_get("wl1.1_ssid"); %>",
+	                 "<% nvram_get("wl1.2_ssid"); %>",
+	                 "<% nvram_get("wl1.3_ssid"); %>"]);
+	if (wl_info.band5g_2_support) {
+		guestnames.push(["<% nvram_get("wl2.1_ssid"); %>",
+		                 "<% nvram_get("wl2.2_ssid"); %>",
+		                 "<% nvram_get("wl2.3_ssid"); %>"]);
+	}
+}
+
+var classObj= {
+        ToHexCode:function(str){
+                return encodeURIComponent(str).replace(/%/g,"\\x").toLowerCase();
+        },
+        UnHexCode:function(str){
+                return decodeURIComponent(str.replace(/\\x/g, "%"));
+        }
+}
+
+var content = "";
+function GenContent(){
+	var dead = 0;
+	$.ajax({
+		url: '/wl_log.asp',
+		dataType: 'text',
+		timeout: 1500,
+		error: function(xhr){
+			if(dead > 30){
+				$("#wl_log").html("Fail to grab wireless log.");
+			}
+			else{
+				dead++;
+				setTimeout("GenContent();", 1000);
+			}
+		},
+
+		success: function(resp){
+			content = htmlEnDeCode.htmlEncode(resp);
+			content = classObj.UnHexCode(content);
+			if(content.length > 10){
+				$("#wl_log").html(content);
+			}
+			else{
+				$("#wl_log").html("Fail to grab wireless log.");
+			}
+		}
+	});
+}
 
 function initial(){
 	show_menu();
@@ -75,7 +126,7 @@ function redraw(){
 		document.getElementById('wifi24headerblock').innerHTML='<span class="wifiheader" style="font-size: 125%;">Wireless 2.4 GHz is disabled.</span>';
 	} else {
 		display_header(dataarray24, 'Wireless 2.4 GHz', document.getElementById('wifi24headerblock'), false);
-		display_clients(wificlients24, document.getElementById('wifi24block'));
+		display_clients(wificlients24, document.getElementById('wifi24block'), 0);
 	}
 
 	if (band5g_support)  {
@@ -84,48 +135,67 @@ function redraw(){
 				document.getElementById('wifi5headerblock').innerHTML='<span class="wifiheader" style="font-size: 125%;">Wireless 5 GHz-1 is disabled.</span>';
 			} else {
 				display_header(dataarray5, 'Wireless 5 GHz-1', document.getElementById('wifi5headerblock'), true);
-				display_clients(wificlients5, document.getElementById('wifi5block'));
+				display_clients(wificlients5, document.getElementById('wifi5block'), 1);
 			}
 			if (dataarray52.length == 0) {
 				document.getElementById('wifi52headerblock').innerHTML='<span class="wifiheader" style="font-size: 125%;">Wireless 5 GHz-2 is disabled.</span>';
 			} else {
 				display_header(dataarray52, 'Wireless 5 GHz-2', document.getElementById('wifi52headerblock'), false);
-				display_clients(wificlients52, document.getElementById('wifi52block'));
+				display_clients(wificlients52, document.getElementById('wifi52block'), 2);
 			}
 		} else {
 			if (dataarray5.length == 0) {
 				document.getElementById('wifi5headerblock').innerHTML='<span class="wifiheader" style="font-size: 125%;">Wireless 5 GHz is disabled.</span>';
 			} else {
 				display_header(dataarray5, 'Wireless 5 GHz', document.getElementById('wifi5headerblock'), true);
-				display_clients(wificlients5, document.getElementById('wifi5block'));
+				display_clients(wificlients5, document.getElementById('wifi5block'), 1);
 			}
 		}
 	}
 
-	try {
-		document.getElementById("wl_log").innerHTML = classObj.UnHexCode(nvram_dump_String);
-	} catch(e) {
-		document.getElementById("wl_log").innerHTML = nvram_dump_String;
-	}
+	GenContent();
 }
 
 
-function display_clients(clientsarray, obj) {
-	var code, i, client, overlib_str;
-	var mac, ipaddr, hostname;
+function display_clients(clientsarray, obj, unit) {
+	var code, i, ii, client, overlib_str;
+	var mac, ipaddr, hostname, flags;
 	var nmapentry;
+	var guestheader = 0;
 
 	code = '<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">';
 	code += '<thead><tr>';
 	code += '<td width="25%">Device</td>';
-	code += '<td width="37%">IP Address</td>';
-	code += '<td width="16%">Rx/Tx & RSSI</td><td width="12%">Connected</td>';
+	code += '<td width="29%">IP Address</td>';
+	code += '<td width="16%">Rx/Tx & RSSI</td><td width="10%">Connected</td>';
+	if (clientsarray.length > 1) {
+		if (clientsarray[0][8] != "")
+			code += '<td width="10%">Streams</td>';
+		else
+			code += '<td width="10%">PHY</td>';
+	}
 	code += '<td width="10%">Flags</td>';
 	code += '</tr></thead>';
 
 	if (clientsarray.length > 1) {
 		for (i = 0; i < clientsarray.length-1; ++i) {
 			client = clientsarray[i];
+
+			// Need Guest header?
+			flags = client[11];
+			for (ii = 1; ii < 5; ii++) {
+				if (flags.indexOf(ii) > 0) {
+					flags = client[11].replace(ii,"");
+					if (guestheader < ii) {
+						guestheader = ii;
+						if (sw_mode == "2")
+							code += '<tr><th colspan="6" style="color:white;height:20px;"><span style="color:#FFCC00;font-weight:bolder;">Local Clients:</span> ' + guestnames[unit][ii-1] + '</th></tr>';
+						else
+							code += '<tr><th colspan="6" style="color:white;height:20px;"><span style="color:#FFCC00;font-weight:bolder;">Guest Network ' + guestheader +':</span> ' + guestnames[unit][ii-1] + '</th></tr>';
+						ii = 5;
+					}
+				}
+			}
 			code += '<tr>';
 
 			// Mac
@@ -158,13 +228,30 @@ function display_clients(clientsarray, obj) {
 					ipaddr = clientList[mac].ip;
 			}
 			code += '<td style="vertical-align: top;">' + htmlEnDeCode.htmlEncode(ipaddr);	// IPv4
-			code += '<br><span style="margin-top:-15px; color: cyan;">'+ client[3] +'</span></td>';	// IPv6
-
+			if(client[3].length >34){
+				overlib_str = client[3];
+				client[3] = "..."+client[3].substring(client[3].length-32);
+				code += '<br><span style="margin-top:-15px; color: cyan;" title="'+overlib_str+'">'+ client[3] +'</span></td>';
+			}else
+				code += '<br><span style="margin-top:-15px; color: cyan;">'+ client[3] +'</span></td>';	// IPv6
 
 			code += '<td style="text-align: right;">' + client[5] + ' / ' + client[6] +' Mbps';	// Rate
 			code += '<br><span style="margin-top:-15px; color: cyan;">' + client[4] + ' dBm</td>';	// RSSI
-			code += '<td style="text-align: right;">' + client[7] + '</td>';	// Time
-			code += '<td>' + client[8] + '</td>';	// Flags
+			code += '<td style="text-align: right;vertical-align:top;">' + client[7] + '</td>';	// Time
+
+			if (client[8] != "") {
+				code += '<td style="vertical-align:top;">' + client[8] + ' ('+ client[9] +')';	// NSS + PHY
+			} else if (client[9] != "") {
+				code += '<td style="vertical-align:top;">' + client[9];	// PHY
+			} else {
+				code += '<td>';
+			}
+			if (client[10] != "") {
+				code += '<br><span style="margin-top:-15px; color: cyan;">' + client[10] + '</td>';  // BW
+			} else {
+				code += '</td>';
+			}
+			code += '<td style="vertical-align:top;">' + flags + '</td>';	// Flags
 			code += '</tr>';
 		}
 	} else {
@@ -179,6 +266,7 @@ function display_clients(clientsarray, obj) {
 function display_header(dataarray, title, obj, show_dfs) {
 	var code;
 	var channel, i;
+	var time, formatted_time;
 
 	code = '<table width="100%" style="border: none;">';
 	code += '<thead><tr><span class="wifiheader" style="font-size: 125%;">' + title +'</span></tr></thead>';
@@ -195,9 +283,11 @@ function display_header(dataarray, title, obj, show_dfs) {
 	code += '<td><span class="wifiheader">Channel: </span>'+ dataarray[4] + '</td> <td><span class="wifiheader">BSSID: </span>' + dataarray[5] +'</td></tr>';
 
 	if (show_dfs && dfs_statusarray.length > 1) {
-                code += '<tr><td colspan="2"><span class="wifiheader">DFS State: </span>' + dfs_statusarray[0] + '</td>';
-                code += '<td><span class="wifiheader">Time elapsed: </span>' + dfs_statusarray[1] + '</td>';
-                code += '<td><span class="wifiheader">Channel cleared for radar: </span>' + dfs_statusarray[2] + '</td></tr>';
+		code += '<tr><td colspan="2"><span class="wifiheader">DFS State: </span>' + dfs_statusarray[0] + '</td>';
+		time = parseInt(dfs_statusarray[1]);
+		formatted_time = Math.floor(time / 3600) + "h " + Math.floor(time / 60) % 60 + "m " + time % 60 + "s";
+		code += '<td><span class="wifiheader">Time elapsed: </span>' + formatted_time + '</td>';
+		code += '<td><span class="wifiheader">Channel cleared for radar: </span>' + dfs_statusarray[2] + '</td></tr>';
 	}
 
 	code += '</table>';
@@ -321,8 +411,8 @@ function hide_details_window(){
 									<br><br>
 									<div id="wifi52headerblock"></div>
 									<div id="wifi52block"></div>
-									<div id="flags_mumimo_div" style="display:none;">Flags: <span class="wifiheader">P</span>=Powersave Mode, <span class="wifiheader">S</span>=Short GI, <span class="wifiheader">T</span>=STBC, <span class="wifiheader">M</span>=MU Beamforming,<span class="wifiheader">A</span>=Associated, <span class="wifiheader">U</span>=Authenticated, <span class="wifiheader">G</span>=Guest</div>
-									<div id="flags_div">Flags: <span class="wifiheader">P</span>=Powersave Mode, <span class="wifiheader">S</span>=Short GI, <span class="wifiheader">T</span>=STBC, <span class="wifiheader">A</span>=Associated, <span class="wifiheader">U</span>=Authenticated, <span class="wifiheader">G</span>=Guest</div>
+									<div id="flags_mumimo_div" style="display:none;">Flags: <span class="wifiheader">P</span>=Powersave Mode, <span class="wifiheader">S</span>=Short GI, <span class="wifiheader">T</span>=STBC, <span class="wifiheader">M</span>=MU Beamforming, <span class="wifiheader">A</span>=Associated, <span class="wifiheader">U</span>=Authenticated</div>
+									<div id="flags_div">Flags: <span class="wifiheader">P</span>=Powersave Mode, <span class="wifiheader">S</span>=Short GI, <span class="wifiheader">T</span>=STBC, <span class="wifiheader">A</span>=Associated, <span class="wifiheader">U</span>=Authenticated</div>
 									<br>
 									<div class="apply_gen">
 										<input type="button" onClick="location.href=location.href" value="<#CTL_refresh#>" class="button_gen" >

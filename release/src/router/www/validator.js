@@ -290,6 +290,16 @@ var validator = {
 		}
 	},
 
+	integer: function(_val){
+		var obj_value = _val;
+		var re = new RegExp("[^0-9]+","gi");
+		
+		if(re.test(obj_value))
+			return false;
+		else
+			return true;
+	},
+
 	hex: function(obj){
 		var obj_value = obj.value
 		var re = new RegExp("[^a-fA-F0-9]+","gi");
@@ -310,19 +320,6 @@ var validator = {
 		}
 	},
 
-	hostName: function (obj){
-		var re = new RegExp(/^[a-zA-Z0-9][a-zA-Z0-9\-\_]*$/gi);
-		if(re.test(obj.value)){
-			return "";
-		}
-		else if(location.pathname == "/" || location.pathname == "<% abs_index_page(); %>"){
-			return "Client device name only accept alphanumeric characters, under line and dash symbol. The first character cannot be dash \"-\" or under line \"_\".";
-		}
-		else{
-			return "<#JS_validhostname#>";
-		}
-	},
-
 	hostNameChar: function(ch){
 		if (ch>=48&&ch<=57) return true;	//0-9
 		if (ch>=97&&ch<=122) return true;	//little EN
@@ -339,8 +336,45 @@ var validator = {
 			return "";
 		}
 		else{
-			return "<#JS_validhostname#>";
+			return "<#JS_valid_FQDN#>";
 		}
+	},
+
+	host_name: function(obj){
+		var re = new RegExp(/^[a-z0-9][a-z0-9-_]+$/i);
+		if(re.test(obj.value))
+			return "";
+		else
+			return "<#JS_valid_host_name#> <#JS_valid_host_name_first_char#>";
+	},
+
+	samba_name: function(obj){
+		var re = new RegExp(/^[a-z0-9][a-z0-9-_]*$/i);
+		if(re.test(obj.value))
+			return "";
+		else
+			return "<#JS_valid_host_name#> <#JS_valid_host_name_first_char#>";
+	},
+
+	friendly_name: function(obj){
+		var invalid_char = "";
+		for(var i = 0; i < obj.value.length; ++i){
+			if(obj.value.charAt(i) < ' ' || obj.value.charAt(i) > '~')
+				invalid_char = invalid_char+obj.value.charAt(i);
+		}
+
+		if(invalid_char != "")
+			return "<#JS_validstr2#> '"+invalid_char+"' !";
+		else
+			return "";
+	},
+
+	account_name: function(obj){
+		var re = new RegExp(/^[a-z][a-z0-9-]*$/i);
+		if(re.test(obj.value))
+			return "";
+		else
+			return "<#JS_valid_account_name#> <#JS_valid_account_name_first_char#>";
 	},
 
 	requireWANIP: function(v){
@@ -2200,5 +2234,36 @@ var validator = {
                         return true;
                 else
                         return false;
+	},
+
+	dwb_check_wl_setting: function(_jsonPara) {
+		var status = true;
+		var edit_wl_unit = _jsonPara["edit_wl_unit"];
+		var edit_wl_ssid = _jsonPara["edit_wl_ssid"];
+		var dwb_unit = _jsonPara["dwb_unit"];
+		var smart_connect = _jsonPara["smart_connect"];
+		var current_ssid = _jsonPara["current_ssid"];
+		if(edit_wl_unit != dwb_unit) {
+			if(edit_wl_ssid == current_ssid[dwb_unit])//compare dwb ssid
+				status = false;
+		}
+		else {
+			if(smart_connect == "1") {
+				if(edit_wl_ssid == current_ssid[0])//compare wl0 ssid
+					status = false;
+			}
+			else {
+				current_ssid.splice(dwb_unit, 1);//filter dwb ssid
+				for (var idx in current_ssid) {
+					if (current_ssid.hasOwnProperty(idx)) {
+						if(edit_wl_ssid == current_ssid[idx]) {//compare all ssid
+							status = false;
+							break;
+						}
+					}
+				}
+			}
+		}
+		return status;
         }
 };

@@ -134,7 +134,7 @@ function addRow(obj){
 		obj.focus();
 		obj.select();
 		return false;
-	}else if (!check_macaddr(obj, check_hwaddr_flag(obj))){
+	}else if (!check_macaddr(obj, check_hwaddr_flag(obj, 'inner'))){
 		obj.focus();
 		obj.select();		
 		return false;
@@ -282,7 +282,7 @@ function show_tor_settings(value){
 </script>
 </head>
 
-<body onload="initial();">
+<body onload="initial();" class="bg">
 <div id="TopBanner"></div>
 <div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" src="" width="0" height="0" frameborder="0"></iframe>

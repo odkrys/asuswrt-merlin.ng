@@ -88,7 +88,7 @@ typedef struct {
 
 
 unsigned int get_phy_temperature(int radio);
-unsigned int get_wifi_clients(int radio, int querytype);
+unsigned int get_wifi_clients(int unit, int querytype);
 
 #ifdef RTCONFIG_QTN
 unsigned int get_qtn_temperature(void);
@@ -133,31 +133,38 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				int count = 0;
 				char model[64];
 
-				tmp = strstr(buffer, "Processor");
+				char impl[8], arch[8], variant[8], part[10], revision[4];
+				impl[0]='\0'; arch[0]='\0'; variant[0]='\0'; part[0]='\0';
+				strcpy(revision,"0");
 
-				if (tmp)
-					sscanf(tmp, "Processor  :  %[^\n]", model);
-				else {	// BCM490x
-					char impl[8], arch[8], variant[8], part[10];
-					impl[0]='\0'; arch[0]='\0'; variant[0]='\0'; part[0]='\0';
+				tmp = strstr(buffer, "CPU implementer");
+				if (tmp) sscanf(tmp, "CPU implementer  :  %7[^\n]s", impl);
+				tmp = strstr(buffer, "CPU architecture");
+				if (tmp) sscanf(tmp, "CPU architecture  :  %7[^\n]s", arch);
+				tmp = strstr(buffer, "CPU variant");
+				if (tmp) sscanf(tmp, "CPU variant  :  %7[^\n]s", variant);
+				tmp = strstr(buffer, "CPU part");
+				if (tmp) sscanf(tmp, "CPU part  :  %9[^\n]s", part);
+				tmp = strstr(buffer,"CPU revision");
+				if (tmp) sscanf(tmp, "CPU revision  :  %3[^\n]s", revision);
 
-					tmp = strstr(buffer, "CPU implementer");
-					sscanf(tmp, "CPU implementer  :  %7[^\n]s", impl);
-					tmp = strstr(buffer, "CPU architecture");
-					sscanf(tmp, "CPU architecture  :  %7[^\n]s", arch);
-					tmp = strstr(buffer, "CPU variant");
-					sscanf(tmp, "CPU variant  :  %7[^\n]s", variant);
-					tmp = strstr(buffer, "CPU part");
-					sscanf(tmp, "CPU part  :  %9[^\n]s", part);
-
-					if (!strcmp(impl, "0x42")
-					    && !strcmp(variant, "0x0")
-					    && !strcmp(part, "0x100")
-					    && !strcmp(arch, "8"))
-						strcpy(model, "Cortex B53 ARMv8");
-					else
-						sprintf(model, "Implementer: %s, Part: %s, Variant: %s, Arch: %s",impl, part, variant, arch);
-				}
+				if (!strcmp(impl, "0x42")
+				    && !strcmp(variant, "0x0")
+				    && !strcmp(part, "0x100")
+				    && !strcmp(arch, "8"))
+					sprintf(model, "BCM490x - Cortex A53 ARMv8 revision %s", revision);
+				else if (!strcmp(impl, "0x41")
+				    && !strcmp(variant, "0x0")
+				    && !strcmp(part, "0xc07")
+				    && !strcmp(arch, "7"))
+					sprintf(model, "BCM675x - Cortex A7 ARMv7 revision %s", revision);
+				else if (!strcmp(impl, "0x41")
+				    && !strcmp(variant, "0x3")
+				    && !strcmp(part, "0xc09")
+				    && !strcmp(arch, "7"))
+					sprintf(model, "BCM470x - Cortex A7 ARMv7 revision %s", revision);
+				else
+					sprintf(model, "Implementer: %s, Part: %s, Variant: %s, Arch: %s, Rev: %s",impl, part, variant, arch, revision);
 
 				count = sysconf(_SC_NPROCESSORS_CONF);
 				if (count > 1) {
@@ -189,12 +196,16 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				free(buffer);
 				sprintf(result, "%d", freq);
 			}
+			else if (get_model() == MODEL_RTAX58U || get_model() == MODEL_RTAX56U)
+				strcpy(result, "1500");
 			else
 #endif
 			{
-				tmp = nvram_get("clkfreq");
-				if (tmp)
+				tmp = nvram_safe_get("clkfreq");
+				if (*tmp)
 					sscanf(tmp,"%[^,]s", result);
+				else
+					strcpy(result, "???");
 			}
 		} else if(strcmp(type,"memory.total") == 0) {
 			sysinfo(&sys);
@@ -262,6 +273,15 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 			}
 
 			if (mount_info) free(mount_info);
+
+		} else if(strcmp(type,"jffs.free") == 0) {
+			struct statvfs fiData;
+
+			if (statvfs("/jffs",&fiData) == 0 ) {
+				sprintf(result,"%d",(fiData.f_bfree * fiData.f_frsize / MBYTES));
+			} else {
+				strcpy(result,"-1");
+			}
 
 		} else if(strncmp(type,"temperature",11) == 0) {
 			unsigned int temperature;
@@ -462,6 +482,7 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 #endif
 
 		} else if(strcmp(type,"ethernet") == 0 ) {
+#ifndef HND_ROUTER
 			int len, j;
 
 			system("/usr/sbin/robocfg showports >/tmp/output.txt");
@@ -485,6 +506,9 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 
 			}
 			unlink("/tmp/output.txt");
+#else	// HND lacks robocfg support
+			strcpy(result, "[]");
+#endif
 		} else {
 			strcpy(result,"Not implemented");
 		}
@@ -558,9 +582,13 @@ unsigned int get_phy_temperature(int radio)
 	strcpy(buf, "phy_tempsense");
 
 	if (radio == 2) {
-		interface = nvram_get("wl0_ifname");
+		interface = nvram_safe_get("wl0_ifname");
 	} else if (radio == 5) {
-		interface = nvram_get("wl1_ifname");
+		interface = nvram_safe_get("wl1_ifname");
+#if defined(RTAC3200) || defined(RTAC5300) || defined(GTAC5300)
+	} else if (radio == 52) {
+		interface = nvram_safe_get("wl2_ifname");
+#endif
 	} else {
 		return 0;
 	}
@@ -574,40 +602,18 @@ unsigned int get_phy_temperature(int radio)
 }
 
 
-unsigned int get_wifi_clients(int radio, int querytype)
+unsigned int get_wifi_clients(int unit, int querytype)
 {
-	char *name, ifname[]="wlXXXXXXXXXX";
+	char *name, prefix[8];
 	struct maclist *clientlist;
 	int max_sta_count, maclist_size;
-	int val, count = 0;
+	int val, count = 0, subunit;
 #ifdef RTCONFIG_QTN
 	qcsapi_unsigned_int association_count = 0;
 #endif
-
-	snprintf(ifname, sizeof(ifname), "wl%d_ifname", radio);
-	name = nvram_get(ifname);
-	if ((!name) || (!strlen(name))) return 0;
-
-#ifdef RTCONFIG_QTN
-	if (radio == 1) {
-
-		if (nvram_match("wl1_radio", "0"))
-			return -1;	// Best way I can find to check if it's disabled
-
-		if (!rpc_qtn_ready())
-			return -1;
-
-		if (querytype == SI_WL_QUERY_ASSOC) {
-			if (qcsapi_wifi_get_count_associations(name, &association_count) >= 0)
-				return association_count;
-		}
-		return -1;	// All other queries aren't supported by QTN
-	}
+#ifdef RTCONFIG_WIRELESSREPEATER
+	int isrepeater = 0;
 #endif
-
-	wl_ioctl(name, WLC_GET_RADIO, &val, sizeof(val));
-	if (val == 1)
-		return -1;	// Radio is disabled
 
 	/* buffers and length */
 	max_sta_count = 128;
@@ -617,25 +623,73 @@ unsigned int get_wifi_clients(int radio, int querytype)
 	if (!clientlist)
 		return 0;
 
-	if (querytype == SI_WL_QUERY_AUTHE) {
-		strcpy((char*)clientlist, "authe_sta_list");
-		if (wl_ioctl(name, WLC_GET_VAR, clientlist, maclist_size))
-			goto exit;
+	for (subunit = 0; subunit < 4; subunit++) {
+#ifdef RTCONFIG_WIRELESSREPEATER
+		if ((nvram_get_int("sw_mode") == SW_MODE_REPEATER) && (unit == nvram_get_int("wlc_band"))) {
+			if (subunit == 0)
+				continue;
+			else if (subunit == 1)
+				isrepeater = 1;
+			else
+				break;
+		}
+#endif
 
-	} else if (querytype == SI_WL_QUERY_AUTHO) {
-		strcpy((char*)clientlist, "autho_sta_list");
-		if (wl_ioctl(name, WLC_GET_VAR, clientlist, maclist_size))
-			goto exit;
+		if (subunit == 0)
+			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		else
+			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
 
-	} else if (querytype == SI_WL_QUERY_ASSOC) {
-		clientlist->count = max_sta_count;
-		if (wl_ioctl(name, WLC_GET_ASSOCLIST, clientlist, maclist_size))
+		name = nvram_pf_safe_get(prefix, "ifname");
+		if (*name == '\0') continue;
+
+#ifdef RTCONFIG_QTN
+		if (unit == 1) {
+			if ((nvram_match("wl1_radio", "0")) || (!rpc_qtn_ready()))
+				count = -1;
+			else if ((querytype == SI_WL_QUERY_ASSOC) &&
+				 (qcsapi_wifi_get_count_associations(name, &association_count) >= 0))
+					count = association_count;
+			else	// All other queries aren't support by QTN
+				count = -1;
+
 			goto exit;
-	} else {
-		goto exit;
+		}
+#endif
+
+		if (subunit == 0) {
+			wl_ioctl(name, WLC_GET_RADIO, &val, sizeof(val));
+			if (val == 1) {
+				count = -1;	// Radio is disabled
+				goto exit;
+			}
+		}
+
+		if ((subunit > 0) &&
+#ifdef RTCONFIG_WIRELESSREPEATER
+			!isrepeater &&
+#endif
+			!nvram_pf_get_int(prefix, "bss_enabled"))
+				continue;	// Guest interface disabled
+
+		switch (querytype) {
+			case SI_WL_QUERY_AUTHE:
+				strcpy((char*)clientlist, "authe_sta_list");
+				if (!wl_ioctl(name, WLC_GET_VAR, clientlist, maclist_size))
+					count += clientlist->count;
+				break;
+			case SI_WL_QUERY_AUTHO:
+				strcpy((char*)clientlist, "autho_sta_list");
+				if (!wl_ioctl(name, WLC_GET_VAR, clientlist, maclist_size))
+					count += clientlist->count;
+				break;
+			case SI_WL_QUERY_ASSOC:
+				clientlist->count = max_sta_count;
+				if (!wl_ioctl(name, WLC_GET_ASSOCLIST, clientlist, maclist_size))
+					count += clientlist->count;
+				break;
+		}
 	}
-
-	count = clientlist->count;
 
 exit:
 	free(clientlist);

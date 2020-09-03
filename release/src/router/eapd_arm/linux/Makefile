@@ -17,7 +17,7 @@ ifneq ($(LINUXDIR),)
 CFLAGS += -Dlinux
 endif
 
-LDFLAGS += -L$(TOP)/nvram${BCMEX} -L$(INSTALLDIR)/nvram/usr/lib -lnvram
+LDFLAGS += -L$(TOP_PLATFORM)/nvram${BCMEX} -L$(INSTALLDIR)/nvram/usr/lib -lnvram
 LDFLAGS += -L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared
 LDFLAGS += -lgcc_s
 
@@ -50,6 +50,11 @@ ifeq ($(CONFIG_BCMBSD),y)
 OBJS += bsd_eap.o
 CFLAGS += -DBCM_BSD
 endif
+#endif
+
+#ifdef BCM_EVENTD
+OBJS += eventd_eap.o
+CFLAGS += -DBCM_EVENTD
 #endif
 
 OBJS += wlceventd_eap.o

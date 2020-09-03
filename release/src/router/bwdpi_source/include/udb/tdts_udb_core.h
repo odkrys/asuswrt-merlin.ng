@@ -60,6 +60,10 @@
 #define TMCFG_E_UDB_CORE_WBL 0
 #endif
 
+#ifndef TMCFG_E_UDB_CORE_APP_WBL
+#define TMCFG_E_UDB_CORE_APP_WBL 0
+#endif
+
 #ifndef TMCFG_E_UDB_CORE_HWNAT
 #define TMCFG_E_UDB_CORE_HWNAT 0
 #endif
@@ -84,9 +88,10 @@
 #error "TMCFG_E_CORE_APPID is not enabled!"
 #endif
 
-#if !TMCFG_E_CORE_DEVID
-#error "TMCFG_E_CORE_DEVID is not enabled!"
-#endif
+
+//#if !TMCFG_E_CORE_DEVID
+//#error "TMCFG_E_CORE_DEVID is not enabled!"
+//#endif
 
 #if !TMCFG_E_CORE_DNS_DECODE
 #warning "TMCFG_E_CORE_DNS_DECODE is not enabled!"
@@ -146,8 +151,15 @@
 #include "udb/core/udb_wbl.h"
 #endif
 
+#if TMCFG_E_UDB_CORE_APP_WBL
+#include "udb/core/udb_app_wbl.h"
+#endif
+
 #if TMCFG_E_UDB_CORE_IQOS_SUPPORT
 #include "udb/core/udb_qos.h"
+#if TMCFG_E_UDB_CORE_GCTRL_SUPPORT
+#include "udb/core/udb_gctrl.h"
+#endif
 #endif
 
 #if TMCFG_E_UDB_CORE_PATROL_TIME_QUOTA
@@ -164,6 +176,10 @@
 
 #if TMCFG_E_UDB_CORE_TMDBG
 #include "udb/core/udb_dlog.h"
+#endif
+
+#if TMCFG_E_UDB_CORE_MESH
+#include "udb/core/udb_mesh.h"
 #endif
 
 #if TMCFG_E_UDB_CORE_HWNAT

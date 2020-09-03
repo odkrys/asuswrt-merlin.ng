@@ -1,9 +1,9 @@
  /*
- * Copyright 2017, ASUSTeK Inc.
+ * Copyright 2020, ASUSTeK Inc.
  * All Rights Reserved.
  *
  * THIS SOFTWARE IS OFFERED "AS IS", AND ASUS GRANTS NO WARRANTIES OF ANY
- * KIND, EXPRESS OR IMPLIED, BY STATUTE, COMMUNICATION OR OTHERWISE. BROADCOM
+ * KIND, EXPRESS OR IMPLIED, BY STATUTE, COMMUNICATION OR OTHERWISE. ASUS
  * SPECIFICALLY DISCLAIMS ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A SPECIFIC PURPOSE OR NONINFRINGEMENT CONCERNING THIS SOFTWARE.
  *
@@ -13,11 +13,12 @@
 	feature implement:
 	1. traditaional qos
 	2. bandwdith limiter (also for guest network)
-	3. facebook wifi
+	3. facebook wifi     (already EOL in the end of 2017)
+	4. GeForceNow qos
 
 	NOTE:
 	qos mark bit 8~31 : TrendMicro adaptive qos usage, so ASUS only can use bit 0~7 for different applications
-	ex. Traditional qos / bandwidth limiter / Facebook wifi
+	ex. Traditional qos / bandwidth limiter / Facebook wifi / GeForceNow QoS
 */
 
 #include <sys/mount.h>
@@ -28,12 +29,6 @@
 #include <sys/socket.h>
 #ifdef RTCONFIG_FBWIFI
 #include <fbwifi.h>
-#endif
-
-#ifdef HND_ROUTER
-#define TCPATH "/bin/tc"
-#else
-#define TCPATH "/usr/sbin/tc"
 #endif
 
 /*
@@ -63,8 +58,84 @@ static const char *mangle_fn_ipv6 = "/tmp/mangle_rules_ipv6";
 
 int etable_flag = 0;
 int manual_return = 0;
-#define GUEST_INIT_MARKNUM 10 /*10 ~ 30 for Guest Network. */
-#define INITIAL_MARKNUM    30 /*30 ~ X  for LAN . */
+
+#ifdef RTCONFIG_AMAS_WGN
+static void WGN_ifname(int i, int j, char *wl_if)
+{
+	if (nvram_get_int("re_mode") == 1) {
+		char prefix[128] = {0};
+		char tmp[128] = {0};
+		snprintf(prefix, sizeof(prefix), "wl%d.%d_", i, j);
+		sprintf(wl_if, "%s", nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
+
+		QOSDBG(" wl_if=%s, prefix=%s, tmp=%s\n", wl_if, prefix, tmp);
+		return;
+	}
+	else {
+		get_wlxy_ifname(i, j, wl_if);
+		return;
+	}
+}
+
+static void WGN_subnet(const char *wgn, char *net, int len)
+{
+	char *buf = NULL, *g = NULL, *p = NULL;
+	char *wif = NULL, *sub = NULL;
+
+	g = buf = strdup(nvram_safe_get("wgn_brif_rulelist"));
+	while (g) {
+	if ((p = strsep(&g, "<")) == NULL) break;
+		if ((vstrsep(p, ">", &wif, &sub)) != 2) continue;
+		if (!strcmp(wgn, wif)) {
+			snprintf(net, len, "%s", sub);
+			break;
+		}
+	}
+	if (buf) free(buf);
+	QOSDBG(" wgn=%s, net=%s, sub=%s\n", wgn, net, sub);
+}
+
+static void add_iptables_AMAS_WGN(FILE *fn, const char *action)
+{
+	/* Setup guest network's ebtables rules */
+	int  guest_mark = GUEST_INIT_MARKNUM;
+	char wl[128] = {0}, wlv[128] = {0}, tmp[128] = {0}, *next = NULL, *next2 = NULL;
+	char prefix[32] = {0};
+	char mssid_mark[4] = {0};
+	char wl_ifname[IFNAMSIZ] = {0};
+	char *wl_if = wl_ifname;
+	int  i = 0;
+	int  j = 1;
+	char *wgn = NULL;
+	char net[20] = {0};
+
+	/*
+	example:
+	iptables -t mangle -A PREROUTING -s 192.168.102.1/24 -j MARK --set-mark 0xa
+	iptables -t mangle -A PREROUTING -s 192.168.102.1/24 -j RETURN
+	*/
+
+	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
+		snprintf(prefix, sizeof(prefix), "wl%d_", i);
+		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
+
+			if(nvram_get_int(strcat_r(wlv, "_bss_enabled", tmp)) && 
+			   nvram_get_int(strcat_r(wlv, "_bw_enabled" , tmp))) {
+				wgn = nvram_safe_get(strcat_r(wlv, "_brif", tmp));
+				WGN_subnet(wgn, net, sizeof(net));
+				snprintf(mssid_mark, sizeof(mssid_mark), "%d", guest_mark);
+				if (!strcmp(net, "")) continue;
+				fprintf(fn, "-A PREROUTING -s %s -j %s %s\n", net, action, mssid_mark);
+				fprintf(fn, "-A PREROUTING -s %s -j RETURN\n", net);
+				guest_mark++;
+			} //bss_enabled
+			j++;
+		}
+		i++; j = 1;
+	}
+}
+#endif
 
 /*
 	ip / mac / ip-range status
@@ -255,6 +326,14 @@ static void address_format_checker(int *type, char *old, char *new, int len)
 	// mac format
 	g = buf = strdup(old);
 	if (sscanf(g, "%02X:%02X:%02X:%02X:%02X:%02X",&s[0],&s[1],&s[2],&s[3],&s[4],&s[5]) == 6) {
+#ifdef RTCONFIG_AMAS
+		QOSLOG("address_format_checker");
+		if (amas_lib_device_ip_query(old, new)) {
+			*type = TYPE_IP;
+			QOSLOG("is_ip=%d, is_mac=%d, is_range=%d, type=%d, new=%s", is_ip, is_mac, is_range, *type, new);
+			return;
+		} else
+#endif
 		is_mac = 1;
 		goto end;
 	}
@@ -390,6 +469,44 @@ void add_EbtablesRules(void)
 }
 #endif
 
+void add_EbtablesRules_BW()
+{
+	if(etable_flag == 1) return;
+
+	/* Setup guest network's ebtables rules */
+	int  guest_mark = GUEST_INIT_MARKNUM;
+	char wl[128], wlv[128], tmp[128], *next, *next2;
+	char prefix[32];
+	char mssid_mark[4];
+	char wl_ifname[IFNAMSIZ];
+	char *wl_if = wl_ifname;
+	int  i = 0;
+	int  j = 1;
+	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
+		snprintf(prefix, sizeof(prefix), "wl%d_", i);
+		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
+
+			if(nvram_get_int(strcat_r(wlv, "_bss_enabled", tmp)) && 
+			   nvram_get_int(strcat_r(wlv, "_bw_enabled" , tmp))) {
+				WGN_ifname(i, j, wl_if);
+				if (!strcmp(wl_if, "")) continue;
+				snprintf(mssid_mark, sizeof(mssid_mark), "%d", guest_mark);
+				eval("ebtables", "-t", "nat", "-D", "PREROUTING",  "-i", wl_if, "-j", "mark", "--set-mark", mssid_mark, "--mark-target", "ACCEPT");
+				eval("ebtables", "-t", "nat", "-D", "POSTROUTING", "-o", wl_if, "-j", "mark", "--set-mark", mssid_mark, "--mark-target", "ACCEPT");
+				eval("ebtables", "-t", "nat", "-A", "PREROUTING",  "-i", wl_if, "-j", "mark", "--set-mark", mssid_mark, "--mark-target", "ACCEPT");
+				eval("ebtables", "-t", "nat", "-A", "POSTROUTING", "-o", wl_if, "-j", "mark", "--set-mark", mssid_mark, "--mark-target", "ACCEPT");
+				guest_mark++;
+			} //bss_enabled
+			j++;
+		}
+		i++; j = 1;
+	}
+
+	etable_flag = 1;
+	QOSDBG("[BWLIT_GUEST] Create ebtables rules done.\n");
+}
+
 void del_iQosRules(void)
 {
 #ifdef CLS_ACT
@@ -404,8 +521,10 @@ void del_iQosRules(void)
 	eval("ip6tables", "-t", "mangle", "-F");
 #endif
 
+#if 0
 #ifdef RTCONFIG_BCMARM
 	remove_codel_patch();
+#endif
 #endif
 }
 
@@ -457,6 +576,15 @@ static int add_qos_rules(char *pcWANIF)
 		case MODEL_RTAC3100:
 		case MODEL_GTAC5300:
 		case MODEL_RTAC86U:
+		case MODEL_RTAX88U:
+		case MODEL_GTAX11000:
+		case MODEL_RTAX92U:
+		case MODEL_RTAX95Q:
+		case MODEL_RTAX56_XD4:
+		case MODEL_RTAX58U:
+		case MODEL_RTAX55:
+		case MODEL_RTAX56U:
+		case MODEL_GTAXE11000:
 		case MODEL_RTAC1200G:
 		case MODEL_RTAC1200GP:
 #if defined(RTCONFIG_LANTIQ)
@@ -906,7 +1034,7 @@ static int add_qos_rules(char *pcWANIF)
 //		eval("ip6tables-restore", (char*)mangle_fn_ipv6);
 	}
 #endif
-	run_custom_script("qos-start", "rules");
+	run_custom_script("qos-start", 0, "rules", NULL);
 	QOSDBG("[qos] iptables DONE!\n");
 
 	return 0;
@@ -1261,7 +1389,7 @@ static int start_tqos(void)
 
 	fclose(f);
 	chmod(qosfn, 0700);
-	run_custom_script("qos-start", "init");
+	run_custom_script("qos-start", 0, "init", NULL);
 	eval((char *)qosfn, "start");
 	QOSDBG("[qos] tc done!\n");
 
@@ -1272,6 +1400,11 @@ static int start_tqos(void)
 void stop_iQos(void)
 {
 	eval((char *)qosfn, "stop");
+
+#ifdef RTCONFIG_GEFORCENOW
+	nvgfn_kernel_setting(0);
+	nvgfn_mcs_isauto(0);
+#endif
 }
 
 static int add_bandwidth_limiter_rules(char *pcWANIF)
@@ -1280,7 +1413,7 @@ static int add_bandwidth_limiter_rules(char *pcWANIF)
 	char *buf, *g, *p;
 	char *enable, *addr, *dlc, *upc, *prio;
 	char lan_addr[32];
-	char addr_new[40], wl_ifname[IFNAMSIZ];
+	char addr_new[40];
 	int addr_type;
 	char *action = NULL;
 
@@ -1389,6 +1522,11 @@ static int add_bandwidth_limiter_rules(char *pcWANIF)
 	}
 	free(buf);
 
+#ifdef RTCONFIG_AMAS_WGN
+	// AMAS non-RE mode
+	if (nvram_get_int("re_mode") == 0) add_iptables_AMAS_WGN(fn, action);
+#endif
+
 	fprintf(fn, "COMMIT\n");
 	fclose(fn);
 	chmod(mangle_fn, 0700);
@@ -1396,38 +1534,8 @@ static int add_bandwidth_limiter_rules(char *pcWANIF)
 	QOSDBG("[BWLIT] Create iptables rules done.\n");
 
 	/* Setup guest network's ebtables rules */
-	int  guest_mark = GUEST_INIT_MARKNUM;
-	char wl[128], wlv[128], tmp[128], *next, *next2;
-	char prefix[32];
-	char mssid_mark[4];
-	char *wl_if = wl_ifname;
-	int  i = 0;
-	int  j = 1;
-	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
-		snprintf(prefix, sizeof(prefix), "wl%d_", i);
-		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
+	add_EbtablesRules_BW();
 
-			if(nvram_get_int(strcat_r(wlv, "_bss_enabled", tmp)) && 
-			   nvram_get_int(strcat_r(wlv, "_bw_enabled" , tmp))) {
-				
-				get_wlxy_ifname(i, j, wl_if);
-				if(get_model()==MODEL_RTAC87U && (i == 1)) {
-					if(j == 1) wl_if = "vlan4000";
-					if(j == 2) wl_if = "vlan4001";
-					if(j == 3) wl_if = "vlan4002";
-				}
-
-				snprintf(mssid_mark, sizeof(mssid_mark), "%d", guest_mark);
-				eval("ebtables", "-t", "nat", "-A", "PREROUTING",  "-i", wl_if, "-j", "mark", "--set-mark", mssid_mark, "--mark-target", "ACCEPT");
-				eval("ebtables", "-t", "nat", "-A", "POSTROUTING", "-o", wl_if, "-j", "mark", "--set-mark", mssid_mark, "--mark-target", "ACCEPT");
-				guest_mark++;
-			} //bss_enabled
-			j++;
-		}
-		i++; j = 1;
-	}
-
-	QOSDBG("[BWLIT_GUEST] Create ebtables rules done.\n");
 	return 0;
 }
 
@@ -1576,6 +1684,7 @@ static int start_bandwidth_limiter(void)
 	
 	/* Setup guest network's bandwidth limiter */
 	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
 		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
 
@@ -1599,7 +1708,11 @@ static int start_bandwidth_limiter(void)
 					"\tTCA%d%d=\"tc class add dev $GUEST%d%d\"\n"
 					"\tTFA%d%d=\"tc filter add dev $GUEST%d%d\"\n" // 5
 					"\n"
+#if defined(RTCONFIG_SOC_IPQ8074)
+					"\t$TQA%d%d root handle %d: htb default %d\n"
+#else
 					"\t$TQA%d%d root handle %d: htb\n"
+#endif
 					"\t$TCA%d%d parent %d: classid %d:1 htb rate %skbit\n" // 7
 					"\n"
 					"\t$TCA%d%d parent %d:1 classid %d:%d htb rate 1kbit ceil %skbit prio %d\n"
@@ -1614,7 +1727,11 @@ static int start_bandwidth_limiter(void)
 					, i, j, i, j
 					, i, j, i, j
 					, i, j, i, j // 5
+#if defined(RTCONFIG_SOC_IPQ8074)
+					, i, j, guest, guest_mark
+#else
 					, i, j, guest
+#endif
 					, i, j, guest, guest, nvram_safe_get(strcat_r(wlv, "_bw_dl", tmp)) //7
 					, i, j, guest, guest, guest_mark, nvram_safe_get(strcat_r(wlv, "_bw_dl", tmp)), guest_mark
 					, i, j, guest, guest_mark, guest_mark, qsched
@@ -1645,6 +1762,7 @@ static int start_bandwidth_limiter(void)
 		);
 	i = 0; j = 1;
 	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
 		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
 			
@@ -1699,19 +1817,398 @@ static int start_bandwidth_limiter(void)
 	return 0;
 }
 
+#ifdef RTCONFIG_AMAS_WGN
+static int start_bandwidth_limiter_AMAS_WGN(void)
+{
+	FILE *f = NULL;
+	char wl_ifname[IFNAMSIZ];
+
+	if ((f = fopen(qosfn, "w")) == NULL) return -2;
+
+	/* Start Function */
+	fprintf(f,
+		"#!/bin/sh\n"
+		"SFQ=\"sfq perturb 10\"\n"
+		"\n"
+		"start()\n"
+		"{\n"
+	);
+
+	// init guest 3: ~ 14: (12 guestnetwork), start number = 3
+	guest = 3;
+	int  guest_mark = GUEST_INIT_MARKNUM;
+	char wl[128], wlv[128], tmp[128], *next, *next2;
+	char prefix[32];
+	char *wl_if = wl_ifname;
+	int  i = 0;
+	int  j = 1;
+
+	/* Loop */
+	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
+		snprintf(prefix, sizeof(prefix), "wl%d_", i);
+		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
+			if (!nvram_pf_get_int(wlv, "_bss_enabled") ||
+			    !nvram_pf_get_int(wlv, "_bw_enabled")) {
+				j++;
+				continue;
+			}
+			WGN_ifname(i, j, wl_if);
+			QOSDBG("[BWLIT_GUEST] Processor [%s] Interface \n", wl_if);
+			if (!strcmp(wl_if, "")) continue;
+
+			fprintf(f, "\n"
+				   "\ttc qdisc del dev %s root 2>/dev/null\n", wl_if);
+			fprintf(f, "\tGUEST%d%d=%s\n", i, j, wl_if);
+			fprintf(f, "\tTQA%d%d=\"tc qdisc add dev $GUEST%d%d\"\n", i, j, i, j);
+			fprintf(f, "\tTCA%d%d=\"tc class add dev $GUEST%d%d\"\n", i, j, i, j);
+			fprintf(f, "\tTFA%d%d=\"tc filter add dev $GUEST%d%d\"\n", i, j, i, j); // 5
+			fprintf(f, "\n"
+				   "\t$TQA%d%d root handle %d: htb default %d\n", i, j, guest, guest_mark);
+			fprintf(f, "\t$TCA%d%d parent %d: classid %d:1 htb rate %skbit\n", i, j, guest, guest, nvram_pf_safe_get(wlv, "_bw_dl")); //7
+			fprintf(f, "\n"
+				   "\t$TCA%d%d parent %d:1 classid %d:%d htb rate 1kbit ceil %skbit prio %d\n", i, j, guest, guest, guest_mark, nvram_pf_safe_get(wlv, "_bw_dl"), guest_mark);
+			fprintf(f, "\t$TQA%d%d parent %d:%d handle %d: $SFQ\n", i, j, guest, guest_mark, guest_mark);
+			fprintf(f, "\t$TFA%d%d parent %d: prio %d protocol ip u32 match mark %d 0x%x flowid %d:%d\n", i, j, guest, guest_mark, guest_mark, QOS_MASK, guest, guest_mark); // 10
+			QOSDBG("[BWLIT_GUEST] create %s bandwidth limiter, qdisc=%d, class=%d\n", wl_if, guest, guest_mark);
+
+			guest++; // add guest 3: ~ 14: (12 guestnetwork)
+			guest_mark++;
+			j++;
+		}
+		i++; j = 1;
+	}
+	
+	/* Stop Function */
+	fprintf(f,
+		"}\n\n"
+		"stop()\n"
+		"{\n"
+		/* Flush ebtables */
+		"\t#ebtables -t nat -F\n\n"
+		);
+
+	/* Loop */
+	i = 0; j = 1;
+	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
+		snprintf(prefix, sizeof(prefix), "wl%d_", i);
+		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
+			if(nvram_get_int(strcat_r(wlv, "_bss_enabled", tmp)) && 
+			   nvram_get_int(strcat_r(wlv, "_bw_enabled" , tmp))) {
+				wl_if = wl_ifname;
+				WGN_ifname(i, j, wl_if);
+				if (!strcmp(wl_if, "")) continue;
+				fprintf(f, "\ttc qdisc del dev %s root 2>/dev/null\n", wl_if);
+			}
+			j++;
+		}
+		i++; j = 1;
+	}
+	
+	/* Show Function */
+	fprintf(f,
+		"}\n\n"
+		"show()\n"
+		"{\n"
+		);
+
+	/* Loop */
+	i = 0; j = 1;
+	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
+		snprintf(prefix, sizeof(prefix), "wl%d_", i);
+		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
+			if(nvram_get_int(strcat_r(wlv, "_bss_enabled", tmp)) && 
+			   nvram_get_int(strcat_r(wlv, "_bw_enabled" , tmp))) {
+				wl_if = wl_ifname;
+				WGN_ifname(i, j, wl_if);
+				if (!strcmp(wl_if, "")) continue;
+				fprintf(f, "\ttc -s -d class ls dev %s\n", wl_if);
+			}
+			j++;
+		}
+		i++; j = 1;
+	}
+	
+	/* Main Funtion */
+	fprintf(f,
+		"}\n\n"
+		"if [ $# != 1 ]; then\n"
+		"\techo \"Usage: $0 start/stop/restart\"\n"
+		"else\n"
+		"\tif [ $1 = \"start\" ]; then\n"
+		"\t\tstart\n"
+		"\telif [ $1 = \"stop\" ]; then\n"
+		"\t\tstop\n"
+		"\telif [ $1 = \"restart\" ]; then\n"
+		"\t\tstop\n"
+		"\t\tstart\n"
+		"\tfi\n"
+		"fi\n"
+		);
+
+	fclose(f);
+	chmod(qosfn, 0700);
+	eval((char *)qosfn, "start");
+	QOSDBG("[BWLIT_RE] Execute Bandwidth Limiter Done.\n");
+
+	return 0;
+}
+#endif
+
+#ifdef RTCONFIG_GEFORCENOW
+static int nvfgn_GetQoSChannelPort(char *str)
+{
+	int ret = 0;
+	char *buf = NULL, *g = NULL, *p = NULL;
+	char *type = NULL, *proto = NULL, *port = NULL;
+
+	g = buf = strdup(nvram_safe_get("nvgfn_ch_rulelist"));
+	while (g) {
+		if ((p = strsep(&g, "<")) == NULL) break;
+		if ((vstrsep(p, ">", &type, &proto, &port)) != 3) continue;
+		if (!strcmp(str, type)) {
+			ret = atoi(port);
+			break;
+		}
+	}
+	if (buf) free(buf);
+	return ret;
+}
+
+static int start_GeForce_QoS(void)
+{
+	FILE *f = NULL;
+	unsigned int ibw = 0, obw = 0;
+	unsigned int ibw_re = 0, obw_re = 0;
+
+	_dprintf("[GeForce] start GeForceNow QoS ...\n");
+	ibw = strtoul(nvram_safe_get("qos_ibw"), NULL, 10);
+	obw = strtoul(nvram_safe_get("qos_obw"), NULL, 10);
+	ibw_re = strtoul(nvram_safe_get("nvgfn_ibw_r"), NULL, 10);
+	obw_re = strtoul(nvram_safe_get("nvgfn_obw_r"), NULL, 10);
+
+	/* If this value doesn't exist or 0 or empty, will give 1Gbps as default value */
+	if (ibw == 0) ibw = 1024000;
+	if (obw == 0) obw = 1024000;
+	if (ibw_re == 0) ibw_re = 1024000;
+	if (obw_re == 0) obw_re = 1024000;
+
+	/* If this value exist and it is less then 1Mbps, will force into 1Mbps */
+	if (ibw < 1024 && ibw != 0) ibw = 1024;
+	if (obw < 1024 && obw != 0) obw = 1024;
+	if (ibw_re < 1024 && ibw_re != 0) ibw_re = 1024;
+	if (obw_re < 1024 && obw_re != 0) obw_re = 1024;
+
+	if ((f = fopen(qosfn, "w")) == NULL) return -2;
+	fprintf(f,
+		"#!/bin/sh\n"
+		"WAN=%s\n"
+		"LAN=%s\n"
+		"\n"
+		"TQAU=\"tc qdisc add dev $WAN\"\n"
+		"TCAU=\"tc class add dev $WAN\"\n"
+		"TFAU=\"tc filter add dev $WAN\"\n"
+		"SFQ=\"sfq perturb 10\"\n"
+		"TQA=\"tc qdisc add dev $LAN\"\n"
+		"TCA=\"tc class add dev $LAN\"\n"
+		"TFA=\"tc filter add dev $LAN\"\n"
+		"\n"
+		, get_wan_ifname(wan_primary_ifunit())
+		, nvram_safe_get("lan_ifname")
+	);
+
+	fprintf(f,
+		"start()\n"
+		"{\n"
+		"echo \"root ...\"\n"
+		"$TQA root handle 1: htb default 50\n"
+		"$TCA parent 1: classid 1:1 htb rate %ukbit\n"
+		"\n"
+		"$TQAU root handle 2: htb default 50\n"
+		"$TCAU parent 2: classid 2:1 htb rate %ukbit\n"
+		"\n"
+		"echo \"download ...\"\n"
+		"# 1:10\n"
+		"$TCA parent 1:1 classid 1:10 htb rate %ukbit ceil %ukbit prio 1\n"
+		"$TQA parent 1:10 handle 10: $SFQ\n"
+		"$TFA parent 1: prio 1 protocol ip handle 10 fw flowid 1:10\n"
+		"\n"
+		"# 1:20\n"
+		"$TCA parent 1:1 classid 1:20 htb rate %fkbit ceil %ukbit prio 2\n"
+		"$TQA parent 1:20 handle 20: $SFQ\n"
+		"$TFA parent 1: prio 2 protocol ip handle 20 fw flowid 1:20\n"
+		"\n"
+		"# 1:30\n"
+		"$TCA parent 1:1 classid 1:30 htb rate %fkbit ceil %ukbit prio 3\n"
+		"$TQA parent 1:30 handle 30: $SFQ\n"
+		"$TFA parent 1: prio 3 protocol ip handle 30 fw flowid 1:30\n"
+		"\n"
+		"# 1:40\n"
+		"$TCA parent 1:1 classid 1:40 htb rate %fkbit ceil %ukbit prio 4\n"
+		"$TQA parent 1:40 handle 40: $SFQ\n"
+		"$TFA parent 1: prio 4 protocol ip handle 40 fw flowid 1:40\n"
+		"\n"
+		"# 1:50\n"
+		"$TCA parent 1:1 classid 1:50 htb rate %fkbit ceil %ukbit prio 5\n"
+		"$TQA parent 1:50 handle 50: $SFQ\n"
+		"$TFA parent 1: prio 5 protocol ip handle 50 fw flowid 1:50\n"
+		"\n"
+		, ibw             // 1:
+		, obw             // 2:
+		, ibw_re,   ibw   // 1:10
+		, 0.20*ibw, ibw   // 1:20
+		, 0.15*ibw, ibw   // 1:30
+		, 0.10*ibw, ibw   // 1:40
+		, 0.05*ibw, ibw   // 1:50
+	);
+
+	/* fixed ports */
+	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("audio"));
+	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("mic"));
+	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("vedio"));
+	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol 17 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("control"));
+	fprintf(f, "$TFA parent 1: prio 10 protocol ip u32 match ip protocol  6 0xff match ip dport %d 0xffff flowid 1:10\n", nvfgn_GetQoSChannelPort("control"));
+
+	/* DSCP / TOS */
+	fprintf(f, "$TFA parent 1: prio 11 protocol ip u32 match ip protocol 17 0xff match ip tos 0xE0 0xff flowid 1:10\n");
+	fprintf(f, "$TFA parent 1: prio 11 protocol ip u32 match ip protocol 17 0xff match ip tos 0xC0 0xff flowid 1:10\n");
+	fprintf(f, "$TFA parent 1: prio 11 protocol ip u32 match ip protocol 17 0xff match ip tos 0xB8 0xff flowid 1:10\n");
+	fprintf(f, "$TFA parent 1: prio 12 protocol ip u32 match ip protocol 17 0xff match ip tos 0xA0 0xff flowid 1:20\n");
+	fprintf(f, "$TFA parent 1: prio 12 protocol ip u32 match ip protocol 17 0xff match ip tos 0x80 0xff flowid 1:20\n");
+	fprintf(f, "$TFA parent 1: prio 13 protocol ip u32 match ip protocol 17 0xff match ip tos 0x60 0xff flowid 1:30\n");
+	fprintf(f, "$TFA parent 1: prio 13 protocol ip u32 match ip protocol 17 0xff match ip tos 0x00 0xff flowid 1:30\n");
+	fprintf(f, "$TFA parent 1: prio 14 protocol ip u32 match ip protocol 17 0xff match ip tos 0x40 0xff flowid 1:40\n");
+	fprintf(f, "$TFA parent 1: prio 14 protocol ip u32 match ip protocol 17 0xff match ip tos 0x20 0xff flowid 1:40\n");
+
+	fprintf(f,
+		"\n"
+		"echo \"upload ...\"\n"
+		"# 2:10\n"
+		"$TCAU parent 2:1 classid 2:10 htb rate %ukbit ceil %ukbit prio 1\n"
+		"$TQAU parent 2:10 handle 10: $SFQ\n"
+		"$TFAU parent 2: prio 1 protocol ip handle 10 fw flowid 2:10\n"
+		"\n"
+		"# 2:20\n"
+		"$TCAU parent 2:1 classid 2:20 htb rate %fkbit ceil %ukbit prio 2\n"
+		"$TQAU parent 2:20 handle 20: $SFQ\n"
+		"$TFAU parent 2: prio 2 protocol ip handle 20 fw flowid 2:20\n"
+		"\n"
+		"# 2:30\n"
+		"$TCAU parent 2:1 classid 2:30 htb rate %fkbit ceil %ukbit prio 3\n"
+		"$TQAU parent 2:30 handle 30: $SFQ\n"
+		"$TFAU parent 2: prio 3 protocol ip handle 30 fw flowid 2:30\n"
+		"\n"
+		"# 2:40\n"
+		"$TCAU parent 2:1 classid 2:40 htb rate %fkbit ceil %ukbit prio 4\n"
+		"$TQAU parent 2:40 handle 40: $SFQ\n"
+		"$TFAU parent 2: prio 4 protocol ip handle 40 fw flowid 2:40\n"
+		"\n"
+		"# 2:50\n"
+		"$TCAU parent 2:1 classid 2:50 htb rate %fkbit ceil %ukbit prio 5\n"
+		"$TQAU parent 2:50 handle 50: $SFQ\n"
+		"$TFAU parent 2: prio 5 protocol ip handle 50 fw flowid 2:50\n"
+		"\n"
+		, obw_re  , obw   // 2:10
+		, 0.20*obw, obw   // 2:20
+		, 0.15*obw, obw   // 2:30
+		, 0.10*obw, obw   // 2:40
+		, 0.05*obw, obw   // 2:50
+	);
+
+	/* fixed ports */
+	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("audio"));
+	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("mic"));
+	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("vedio"));
+	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol 17 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("control"));
+	fprintf(f, "$TFAU parent 2: prio 10 protocol ip u32 match ip protocol  6 0xff match ip sport %d 0xffff flowid 2:10\n", nvfgn_GetQoSChannelPort("control"));
+
+	/* DSCP / TOS */
+	fprintf(f, "$TFAU parent 2: prio 11 protocol ip u32 match ip protocol 17 0xff match ip tos 0xE0 0xff flowid 2:10\n");
+	fprintf(f, "$TFAU parent 2: prio 11 protocol ip u32 match ip protocol 17 0xff match ip tos 0xC0 0xff flowid 2:10\n");
+	fprintf(f, "$TFAU parent 2: prio 11 protocol ip u32 match ip protocol 17 0xff match ip tos 0xB8 0xff flowid 2:10\n");
+	fprintf(f, "$TFAU parent 2: prio 12 protocol ip u32 match ip protocol 17 0xff match ip tos 0xA0 0xff flowid 2:20\n");
+	fprintf(f, "$TFAU parent 2: prio 12 protocol ip u32 match ip protocol 17 0xff match ip tos 0x80 0xff flowid 2:20\n");
+	fprintf(f, "$TFAU parent 2: prio 13 protocol ip u32 match ip protocol 17 0xff match ip tos 0x60 0xff flowid 2:30\n");
+	fprintf(f, "$TFAU parent 2: prio 13 protocol ip u32 match ip protocol 17 0xff match ip tos 0x00 0xff flowid 2:30\n");
+	fprintf(f, "$TFAU parent 2: prio 14 protocol ip u32 match ip protocol 17 0xff match ip tos 0x40 0xff flowid 2:40\n");
+	fprintf(f, "$TFAU parent 2: prio 14 protocol ip u32 match ip protocol 17 0xff match ip tos 0x20 0xff flowid 2:40\n");
+	fprintf(f, "}\n"); // start() end
+
+	fprintf(f,
+		"\n"
+		"stop()\n"
+		"{\n"
+		"echo \"stop ...\"\n"
+		"tc qdisc del dev $WAN root 2>/dev/null\n"
+		"tc qdisc del dev $WAN ingress 2>/dev/null\n"
+		"tc qdisc del dev $LAN root 2>/dev/null\n"
+		"tc qdisc del dev $LAN ingress 2>/dev/null\n"
+		"}\n"
+		"\n"
+		"up()\n"
+		"{\n"
+		"echo \"upload ...\"\n"
+		"tc qdisc ls dev $WAN\n"
+		"tc class ls dev $WAN\n"
+		"tc filter ls dev $WAN\n"
+		"}\n"
+		"\n"
+		"down()\n"
+		"{\n"
+		"echo \"down ...\"\n"
+		"tc qdisc ls dev $LAN\n"
+		"tc class ls dev $LAN\n"
+		"tc filter ls dev $LAN\n"
+		"}\n"
+		"\n"
+		"if [ $# != 1 ]; then\n"
+		"echo \"Usage: $0 start/stop/restart/up/down\"\n"
+		"else\n"
+		"if [ $1 = \"start\" ]; then\n"
+		"start\n"
+		"elif [ $1 = \"stop\" ]; then\n"
+		"stop\n"
+		"elif [ $1 = \"restart\" ]; then\n"
+		"stop\n"
+		"start\n"
+		"elif [ $1 = \"up\" ]; then\n"
+		"up\n"
+		"elif [ $1 = \"down\" ]; then\n"
+		"down\n"
+		"fi\n"
+		"fi\n"
+	);
+
+	fclose(f);
+	chmod(qosfn, 0700);
+	eval((char *)qosfn, "restart");
+	QOSDBG("[GeForce] Execute GeForceNow QoS Done.\n");
+
+	nvgfn_kernel_setting(1);
+
+	return 0;
+}
+#endif
+
+
 int add_iQosRules(char *pcWANIF)
 {
 	int status = 0;
 
-	if (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") == 1)
+	if (IS_AQOS()) {
 		set_codel_patch();
+	}
 
 	if (pcWANIF == NULL || nvram_get_int("qos_enable") != 1 || nvram_get_int("qos_type") == 1) return -1;
 	
-	if (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") == 0)
+	if (IS_TQOS()) {
 		status = add_qos_rules(pcWANIF);
-	else if (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") == 2)
+	}
+	else if (IS_BW_QOS()) {
 		status = add_bandwidth_limiter_rules(pcWANIF);
+	}
 	
 	if (status < 0) _dprintf("[%s] status = %d\n", __FUNCTION__, status);
 
@@ -1723,10 +2220,24 @@ int start_iQos(void)
 	int status = 0;
 	if (nvram_get_int("qos_enable") != 1 || nvram_get_int("qos_type") == 1) return -1;
 
-	if (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") == 0)
+	if (IS_TQOS()) {
 		status = start_tqos();
-	else if (nvram_get_int("qos_enable") == 1 && nvram_get_int("qos_type") == 2)
-		status = start_bandwidth_limiter();
+	}
+	else if (IS_BW_QOS()) {
+		// AMAS non-RE mode
+		if (nvram_get_int("re_mode") == 0)
+			status = start_bandwidth_limiter();
+#ifdef RTCONFIG_AMAS_WGN
+		// AMAS RE mode
+		if (nvram_get_int("re_mode") == 1)
+			status = start_bandwidth_limiter_AMAS_WGN();
+#endif
+	}
+#ifdef RTCONFIG_GEFORCENOW
+	else if (IS_GFN_QOS()) {
+		status = start_GeForce_QoS();
+	}
+#endif
 
 	if (status < 0) _dprintf("[%s] status = %d\n", __FUNCTION__, status);
 
@@ -1740,6 +2251,7 @@ int check_wl_guest_bw_enable()
 	int  i = 0;
 
 	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
 		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
 			
@@ -1760,6 +2272,7 @@ void ForceDisableWLan_bw(void)
 	int  i = 0;
 
 	foreach(wl, nvram_safe_get("wl_ifnames"), next) {
+		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
 		foreach(wlv, nvram_safe_get(strcat_r(prefix, "vifnames", tmp)), next2) {
 			nvram_set_int(strcat_r(wlv, "_bw_enabled" , tmp), 0);
@@ -1782,24 +2295,20 @@ void set_codel_patch(void)
 	if (!f_exists("/var/lock/qostc") &&
 	    ((sched == 1) || (sched == 2))) {
 		eval("touch", "/var/lock/qostc");
-		mount("/usr/sbin/faketc", TCPATH, NULL, MS_BIND, NULL);
+		mount("/usr/sbin/faketc", "/usr/sbin/tc", NULL, MS_BIND, NULL);
 		logmessage("qos", "Applying codel patch");
 	}
 }
 
+#if 0
 void remove_codel_patch(void)
 {
-#if 0
 	if (f_exists("/var/lock/qostc")) {
-		umount2(TCPATH,MNT_DETACH);
+		umount2("/usr/sbin/tc",MNT_DETACH);
 		unlink("/var/lock/qostc");
 		logmessage("qos", "Removing codel patch");
 	}
-#else
-	return;
-#endif
-
 }
-
+#endif
 #endif
 

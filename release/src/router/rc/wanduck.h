@@ -189,6 +189,10 @@ int max_wait_time[WAN_UNIT_MAX];
 int max_fb_count;
 int max_fb_wait_time;
 
+#ifdef RTCONFIG_USB_MODEM
+int modem_pdp;
+#endif
+
 int http_sock, dns_sock, maxfd;
 clients client[MAX_USER];
 fd_set rset, allset;
@@ -206,7 +210,7 @@ int disconn_case_old[WAN_UNIT_MAX], disconn_case[WAN_UNIT_MAX];
 int ppp_fail_state;
 int rule_setup;
 int link_changed[WAN_UNIT_MAX], link_setup[WAN_UNIT_MAX];
-int link_wan[WAN_UNIT_MAX];
+int link_wan[WAN_UNIT_MAX], link_wan_old;
 int got_notify;
 int modem_act_reset;
 int nat_state;

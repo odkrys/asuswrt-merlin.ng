@@ -24,7 +24,6 @@ ifeq ($(RTCONFIG_BCMWL6),y)
 CFLAGS += -I$(SRCBASE)/wl/exe/
 endif
 endif
-CFLAGS += -I$(TOP)/push_log
 CFLAGS += -DASUS_DDNS -DTRANSLATE_ON_FLY -DFLASH_EMULATOR -DLinux -DWSC 
 
 ifeq ($(RTCONFIG_NETOOL),y)
@@ -72,8 +71,12 @@ ifeq ($(RTN14U),y)
 CFLAGS += -DBAND_2G_ONLY
 endif
 
-ifeq ($(RTN14U)$(RTAC52U)$(RTAC51U)$(RTN11P)$(RTN300)$(RTN54U)$(RTAC1200HP)$(RTN56UB1)$(RTN56UB2)$(RTAC54U)$(RTAC1200)$(RTAC1200GA1)$(RTAC1200GU),y)
+ifeq ($(RTN14U)$(RTAC52U)$(RTAC51U)$(RTN11P)$(RTN300)$(RTN54U)$(RTAC1200HP)$(RTN56UB1)$(RTN56UB2)$(RTAC54U)$(RTAC1200)$(RTAC1200V2)$(RTAC1200GA1)$(RTAC1200GU),y)
 CFLAGS += -DRA_ESW
+endif
+
+ifeq ($(BUILD_NAME), RT-AC1200_V2)
+CFLAGS += -DRTAC1200V2
 endif
 
 ifeq ($(RTCONFIG_DNSMASQ),y)
@@ -101,9 +104,11 @@ ifeq ($(or $(RTAC68A),$(RT4GAC68U)),y)
 CFLAGS += -DRTAC68U
 endif
 
-OBJS = $(if $(wildcard httpd.c), httpd.o, prebuild/httpd.o)
-OBJS += cgi.o ej.o 
-OBJS += web.o common.o nvram_f.o 
+ifeq ($(RTCONFIG_CAPTCHA),y)
+CFLAGS += -DCAPTCHA
+endif
+OBJS += httpd.o cgi.o ej.o
+OBJS += web.o common.o nvram_f.o
 OBJS += aspbw.o initial_web_hook.o
 OBJS += apps.o
 OBJS += sysinfo.o data_arrays.o
@@ -148,11 +153,15 @@ ifeq ($(RTCONFIG_HTTPS),y)
 OBJS += pwenc.o
 endif
 
+ifeq ($(RTCONFIG_CAPTCHA),y)
+OBJS += libcaptcha.o
+endif
+
 OBJS += $(if $(wildcard web_hook.c), web_hook.o, prebuild/web_hook.o)
 
-LIBS = -L$(TOP)/nvram${BCMEX}$(EX7) -lnvram -L$(TOP)/shared -lshared
+LIBS = -L$(TOP_PLATFORM)/nvram${BCMEX}$(EX7) -lnvram -L$(TOP)/shared -lshared
 ifeq ($(HND_ROUTER),y)
-LIBS += -L$(TOP)/wlcsm -lwlcsm
+LIBS += -L$(TOP_PLATFORM)/wlcsm -lwlcsm
 endif
 
 # for ceil()
@@ -160,8 +169,8 @@ LIBS += -lm
 
 ifeq ($(RTCONFIG_PUSH_EMAIL),y)
 ifeq ($(RTCONFIG_OPENSSL11),y)
-CFLAGS += -I$(TOP)/openssl-1.1.x/include
-LIBS += -L$(TOP)/openssl-1.1.x -lssl -lcrypto -ldl
+CFLAGS += -I$(TOP)/openssl-1.1/include
+LIBS += -L$(TOP)/openssl-1.1 -lssl -lcrypto -ldl
 else
 CFLAGS += -I$(TOP)/openssl/include
 LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
@@ -171,6 +180,12 @@ endif
 ifeq ($(RTCONFIG_BCMARM),y)
 CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include -DTYPEDEF_FLOAT_T
 CFLAGS += -I$(SRCBASE)/common/include
+ifeq ($(HND_ROUTER_AX),y)
+CFLAGS += -DWL11AC_80P80 -DWL11AC_160
+CFLAGS += -I$(SRCBASE)/../components/wlioctl/include -I$(SRCBASE)/../components/proto/include
+CFLAGS += -I$(SRCBASE)/wl/sys
+CFLAGS += -I$(SRCBASE)/../../43684/src/wl/sys
+endif
 LIBS += -lgcc_s
 ifeq ($(RTCONFIG_QTN),y)
 CFLAGS += -I$(TOP)/libqcsapi_client -I$(TOP)/shared/sysdeps/qtn
@@ -195,8 +210,8 @@ ifeq ($(RTCONFIG_HTTPS),y)
 CFLAGS += -I$(TOP)/mssl
 LIBS += -L$(TOP)/mssl -lmssl
 ifeq ($(RTCONFIG_OPENSSL11),y)
-CFLAGS += -I$(TOP)/openssl-1.1.x/include
-LIBS += -L$(TOP)/openssl-1.1.x -lssl -lcrypto -ldl
+CFLAGS += -I$(TOP)/openssl-1.1/include
+LIBS += -L$(TOP)/openssl-1.1 -lssl -lcrypto -ldl
 else
 CFLAGS += -I$(TOP)/openssl/include
 LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
@@ -205,10 +220,10 @@ endif
 
 ifeq ($(RTCONFIG_OPENVPN),y)
 OBJS += openvpn_options.o
-CFLAGS += -I$(TOP)/libvpn
-LIBS += -L$(TOP)/libvpn -lvpn
+CFLAGS += -I$(TOP)/libovpn
+LIBS += -L$(TOP)/libovpn -lovpn
 ifeq ($(RTCONFIG_OPENSSL11),y)
-LIBS += -L$(TOP)/openssl-1.1.x -lssl -lcrypto -ldl
+LIBS += -L$(TOP)/openssl-1.1 -lssl -lcrypto -ldl
 else
 LIBS += -L$(TOP)/openssl -lssl -lcrypto -ldl
 endif
@@ -284,11 +299,21 @@ CFLAGS += -I$(TOP)/libqcsapi_client_10g
 LIBS += -L$(TOP)/libqcsapi_client_10g -lqcsapi_client
 endif
 
+ifeq ($(RTCONFIG_CONNDIAG),y)
+CFLAGS += -I$(TOP)/rc
+LIBS += -L$(TOP)/rc -lconn_diag
+endif
+
 CFLAGS += -I$(TOP)/libpasswd
 LIBS += -L$(TOP)/libpasswd -lpasswd
 
 ifeq ($(RTCONFIG_LANTIQ),y)
 LIBS += -L$(TOP)/fapi_wlan_common-05.04.00.131 -lfapiwlancommon -ldl -L$(TOP)/libhelper-1.4.0.2 -lhelper -L$(TOP)/libfapi-0.1 -lfapi -L$(TOP)/wireless_tools/ -liw
+endif
+
+ifeq ($(RTCONFIG_LIBASUSLOG),y)
+CFLAGS += -I$(TOP)/libasuslog
+LIBS += -L$(TOP)/libasuslog -lasuslog
 endif
 
 all: httpd #test_apps

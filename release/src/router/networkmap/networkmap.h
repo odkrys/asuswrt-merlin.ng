@@ -68,28 +68,34 @@ enum
 #endif
 
 
-#define USERAGENT "Asuswrt/networkmap"
+#define USERAGENT			"Asuswrt/networkmap"
+#define NMPDB_FILE_LOCK			"nmpdb"
+#define USERAGENT			"Asuswrt/networkmap"
+#define NMP_VC_FILE_LOCK		"nmpvc"
 
 
-#if (defined(RTCONFIG_JFFS2) || defined(RTCONFIG_JFFSV1) || defined(RTCONFIG_BRCM_NAND_JFFS2))
-#define NMP_CLIENT_LIST_FILENAME	"/jffs/nmp_client_list"
-#else
-#define NMP_CLIENT_LIST_FILENAME	"/tmp/nmp_client_list"
-#endif
-
-#define NCL_LIMIT		14336   //nmp_client_list limit to 14KB to avoid UI glitch
-#define SINGLE_CLIENT_SIZE	109
+#define NCL_LIMIT		14336   //database limit to 14KB to avoid UI glitch
 
 #define NMP_DEBUG_FILE			"/tmp/NMP_DEBUG"
 #define NMP_DEBUG_MORE_FILE		"/tmp/NMP_DEBUG_MORE"
 #define NMP_DEBUG_FUNCTION_FILE		"/tmp/NMP_DEBUG_FUNCTION"
+#define NMP_DEBUG_VC_FILE		"/tmp/NMP_DEBUG_VC"
 
 #define NEWORKMAP_OUI_FILE		"/usr/networkmap/networkmap.oui.js"
-#if (defined(RTCONFIG_JFFS2) || defined(RTCONFIG_JFFSV1) || defined(RTCONFIG_BRCM_NAND_JFFS2))
+#if (defined(RTCONFIG_JFFS2) || defined(RTCONFIG_JFFSV1) || defined(RTCONFIG_BRCM_NAND_JFFS2) || defined(RTCONFIG_UBIFS))
 #define NMP_CL_JSON_FILE		"/jffs/nmp_cl_json.js"
+#define NMP_VC_JSON_FILE		"/jffs/nmp_vc_json.js"
 #else
 #define NMP_CL_JSON_FILE		"/tmp/nmp_cl_json.js"
+#define NMP_VC_JSON_FILE		"/tmp/nmp_vc_json.js"
 #endif
+#define ARP_PATH			"/proc/net/arp"
+
+#define NMP_CONSOLE_DEBUG(fmt, args...) do{ \
+	if(nvram_match("nmp_debug", "1")) { \
+		cprintf(fmt, ## args); \
+	} \
+}while(0)
 
 #if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
 #define NMP_DEBUG(fmt, args...) \
@@ -123,6 +129,18 @@ enum
 #else
 #define NMP_DEBUG_F(fmt, args...) \
 	if(f_exists(NMP_DEBUG_FUNCTION_FILE)) { \
+		printf(fmt, ## args); \
+	}
+#endif
+
+#if !defined(RTCONFIG_RALINK) && !defined(HND_ROUTER)
+#define NMP_DEBUG_VC(fmt, args...) \
+	if(f_exists(NMP_DEBUG_VC_FILE)) { \
+		_dprintf(fmt, ## args); \
+	}
+#else
+#define NMP_DEBUG_VC(fmt, args...) \
+	if(f_exists(NMP_DEBUG_VC_FILE)) { \
 		printf(fmt, ## args); \
 	}
 #endif
@@ -131,7 +149,7 @@ typedef unsigned char UCHAR;
 typedef unsigned short USHORT;
 typedef unsigned long ULONG;
 
-#if defined(RTCONFIG_SOC_IPQ8064) && defined(RTCONFIG_WIFI_QCA9994_QCA9994)
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
 #define MAX_NR_CLIENT_LIST	1024	/* occupies 436252 bytes. */
 #else
 #define MAX_NR_CLIENT_LIST	255	/* occupies 108656 bytes. */
@@ -143,7 +161,22 @@ enum
 	FLAG_PRINTER,
 	FLAG_ITUNE,
 	FLAG_EXIST,
-	FLAG_VENDOR
+	FLAG_VENDOR,
+	FLAG_ASUS
+};
+
+#define TYPE_LINUX_DEVICE	22
+#define TYPE_WINDOWS		30
+#define TYPE_ANDROID		31
+
+enum
+{
+	BASE_TYPE_DEFAULT = 0,
+	BASE_TYPE_ANDROID,
+	BASE_TYPE_WINDOW,
+	BASE_TYPE_LINUX,
+	BASE_TYPE_ASUS,
+	BASE_TYPE_APPLE
 };
 
 //Device service info data structure
@@ -151,9 +184,12 @@ typedef struct {
 	unsigned char	ip_addr[MAX_NR_CLIENT_LIST][4];
 	unsigned char	mac_addr[MAX_NR_CLIENT_LIST][6];
 	unsigned char	user_define[MAX_NR_CLIENT_LIST][16];
-	unsigned char	vendor_name[MAX_NR_CLIENT_LIST][32];
+	unsigned char	vendor_name[MAX_NR_CLIENT_LIST][128];
 	unsigned char	device_name[MAX_NR_CLIENT_LIST][32];
 	unsigned char	apple_model[MAX_NR_CLIENT_LIST][16];
+	unsigned char	device_type[MAX_NR_CLIENT_LIST][32];
+	unsigned char	vendorClass[MAX_NR_CLIENT_LIST][32];
+	unsigned char	os_type[MAX_NR_CLIENT_LIST];
 	unsigned char	type[MAX_NR_CLIENT_LIST];
 	unsigned char	ipMethod[MAX_NR_CLIENT_LIST][7];
 	unsigned char	opMode[MAX_NR_CLIENT_LIST];
@@ -162,6 +198,7 @@ typedef struct {
 			2.itune
 			3.exist
 			4.vendor
+			5.asus
 */			
 	unsigned char	device_flag[MAX_NR_CLIENT_LIST];
 /* wireless: 0:wired 1:2.4G 2:5G 3:5G-2
@@ -170,7 +207,7 @@ typedef struct {
 /* wireless log information
 */
 #ifdef RTCONFIG_LANTIQ
-	time_t tstamp[MAX_NR_CLIENT_LIST];
+	time_t		tstamp[MAX_NR_CLIENT_LIST];
 #endif
 	char		ssid[MAX_NR_CLIENT_LIST][32];
 	char 		txrate[MAX_NR_CLIENT_LIST][7];
@@ -199,15 +236,18 @@ typedef struct
 {
 	unsigned short	hardware_type; 
 	unsigned short	protocol_type;		 
-	unsigned char hwaddr_len;
-	unsigned char ipaddr_len;		
+	unsigned char	hwaddr_len;
+	unsigned char	ipaddr_len;		
 	unsigned short	message_type;
-	unsigned char source_hwaddr[6];		     
-	unsigned char source_ipaddr[4];
-	unsigned char dest_hwaddr[6];	 
-	unsigned char dest_ipaddr[4];
+	unsigned char	source_hwaddr[6];		     
+	unsigned char	source_ipaddr[4];
+	unsigned char	dest_hwaddr[6];	 
+	unsigned char	dest_ipaddr[4];
 } ARP_HEADER;
 
 int FindHostname(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab);
+int FindDevice(unsigned char *pIP, unsigned char *pMac, int replaceMac);
 void find_wireless_device(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int offline);
-#endif
+void type_filter(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, int x, unsigned char type, unsigned char base, int isDev);
+int isBaseType(int type);
+#endif  /*__NETWORKMAP_H__*/

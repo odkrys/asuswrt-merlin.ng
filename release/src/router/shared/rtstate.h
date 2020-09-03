@@ -37,6 +37,27 @@ enum {
 };
 #endif
 
+#ifdef RTCONFIG_MULTISERVICE_WAN
+///design for WAN_UNIT_MAX < 10
+///extend additional 9 services for original wan unit
+#define WAN_MULTISRV_MAX             10
+enum {
+	WAN_UNIT_MULTISRV_BASE=100,
+	WAN_UNIT_FIRST_MULTISRV_BASE=100,
+	WAN_UNIT_FIRST_MULTISRV_START=101,
+	WAN_UNIT_FIRST_MULTISRV_END=109,
+#if defined(RTCONFIG_DUALWAN) || defined(RTCONFIG_USB_MODEM)
+	WAN_UNIT_SECOND_MULTISRV_BASE=110,
+	WAN_UNIT_SECOND_MULTISRV_START=111,
+	WAN_UNIT_SECOND_MULTISRV_END=119,
+	WAN_UNIT_TMP_MULTISRV_BASE=120,
+	WAN_UNIT_TMP_MULTISRV_START=121,
+	WAN_UNIT_TMP_MULTISRV_END=129,
+#endif
+	WAN_UNIT_MULTISRV_MAX
+};
+#endif
+
 enum {
 	WAN_STATE_INITIALIZING=0,
 	WAN_STATE_CONNECTING,
@@ -265,6 +286,24 @@ enum {
 	DISKMON_FORMAT
 };
 
+#ifdef RTCONFIG_ASUSCTRL
+enum {
+	ASUSCTRL_DFS_BAND2 = 1,
+	ASUSCTRL_DFS_BAND3,
+	ASUSCTRL_CHG_PWR,
+	ASUSCTRL_CHG_SKU,
+	ASUSCTRL_MAX
+};
+#endif
+
+#ifdef RTCONFIG_BROOP
+enum {
+	BROOP_IDLE,
+	BROOP_DETECT
+};
+
+#endif
+
 #define DISKMON_FREQ_DISABLE 0
 #define DISKMON_FREQ_MONTH 1
 #define DISKMON_FREQ_WEEK 2
@@ -284,7 +323,7 @@ enum {
 #define MAX_USB_PART_NUM 16
 #define MAX_USB_PRINTER_NUM 2
 #define MAX_USB_TTY_NUM 10
-#endif
+#endif	// RTCONFIG_USB
 
 // the following definition is for wans_cap
 #define WANSCAP_DSL	0x01
@@ -294,6 +333,7 @@ enum {
 #define WANSCAP_5G	0x10
 #define WANSCAP_USB	0x20
 #define WANSCAP_WAN2	0x40
+#define WANSCAP_SFPP	0x80	/* SFP+ */
 
 // the following definition is for wans_dualwan
 #define WANS_DUALWAN_IF_NONE    0
@@ -305,9 +345,10 @@ enum {
 #define WANS_DUALWAN_IF_5G      6
 #define WANS_DUALWAN_IF_WAN2	7
 #define WANS_DUALWAN_IF_USB2    8
+#define WANS_DUALWAN_IF_SFPP	9
 
 // the following definition is for free_caches()
-#define FREE_MEM_NONE  "0"
+#define FREE_MEM_NONE  "0"	/* kernel < v2.6.39 */
 #define FREE_MEM_PAGE  "1"
 #define FREE_MEM_INODE "2"
 #define FREE_MEM_ALL   "3"
@@ -345,6 +386,7 @@ extern char *link_wan_nvname(int unit, char *buf, int size);
 extern int is_internet_connect(int unit);
 extern int is_wan_connect(int unit);
 extern int is_phy_connect(int unit);
+extern int is_phy_connect2(int unit);
 extern int is_ip_conflict(int unit);
 extern int get_wan_unit(char *ifname);
 extern char *get_wan_ifname(int unit);
@@ -353,20 +395,20 @@ extern char *get_wan6_ifname(int unit);
 #endif
 extern int get_ports_status(unsigned int port_status);
 extern int get_wanports_status(int wan_unit);
-extern char *get_usb_xhci_port(int port);
 extern char *get_usb_ehci_port(int port);
 extern char *get_usb_ohci_port(int port);
 extern int get_usb_port_number(const char *usb_port);
 extern int get_usb_port_host(const char *usb_port);
-#ifdef RTCONFIG_DUALWAN
 extern void set_wanscap_support(char *feature);
+#ifdef RTCONFIG_DUALWAN
 extern void add_wanscap_support(char *feature);
+extern int get_wans_cap(void);
 extern int get_wans_dualwan(void);
 extern int get_dualwan_by_unit(int unit);
 extern int get_wanunit_by_type(int wan_type);
+extern char *get_wantype_str_by_unit(int unit);
 extern int get_dualwan_primary(void);
 extern int get_dualwan_secondary(void);
-extern int get_gate_num(void);
 #else
 static inline int get_wanunit_by_type(int wan_type){
 #ifdef RTCONFIG_USB_MODEM
@@ -385,5 +427,21 @@ extern int get_modemunit_by_type(int wan_type);
 extern int get_wantype_by_modemunit(int modem_unit);
 
 extern char *get_userdns_r(const char *prefix, char *buf, size_t buflen);
+
+extern int asus_ctrl_en(int cid);
+
+#if defined(RTCONFIG_BROOP) || defined(RTCONFIG_AMAS_ETHDETECT)
+int is_bridged(const char *brif, const char *ifname);
+#endif
+#ifdef RTCONFIG_BROOP
+int netlink_broop(char ctrl, int val);
+int detect_broop();
+#endif
+
+#ifdef RTCONFIG_MULTISERVICE_WAN
+int get_ms_base_unit(int wan_unit);
+int get_ms_wan_unit(int base_wan_unit, int idx);
+int get_ms_idx_by_wan_unit(int wan_unit);
+#endif
 
 #endif	/* !__RTSTATE_H__ */

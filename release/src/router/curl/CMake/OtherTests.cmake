@@ -24,13 +24,15 @@ else()
   add_header_include(HAVE_SYS_SOCKET_H "sys/socket.h")
 endif()
 
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
 check_c_source_compiles("${_source_epilogue}
 int main(void) {
     recv(0, 0, 0, 0);
     return 0;
 }" curl_cv_recv)
 if(curl_cv_recv)
-  if(NOT DEFINED curl_cv_func_recv_args OR "${curl_cv_func_recv_args}" STREQUAL "unknown")
+  if(NOT DEFINED curl_cv_func_recv_args OR curl_cv_func_recv_args STREQUAL "unknown")
     foreach(recv_retv "int" "ssize_t" )
       foreach(recv_arg1 "SOCKET" "int" )
         foreach(recv_arg2 "char *" "void *" )
@@ -79,7 +81,7 @@ if(curl_cv_recv)
     string(REGEX REPLACE "^[^,]*,[^,]*,[^,]*,[^,]*,([^,]*)$" "\\1" RECV_TYPE_RETV "${curl_cv_func_recv_args}")
   endif()
 
-  if("${curl_cv_func_recv_args}" STREQUAL "unknown")
+  if(curl_cv_func_recv_args STREQUAL "unknown")
     message(FATAL_ERROR "Cannot find proper types to use for recv args")
   endif()
 else()
@@ -177,6 +179,44 @@ int main(void) {
   return 0;
 }" HAVE_STRUCT_TIMEVAL)
 
+set(HAVE_SIG_ATOMIC_T 1)
+set(CMAKE_REQUIRED_FLAGS)
+if(HAVE_SIGNAL_H)
+  set(CMAKE_REQUIRED_FLAGS "-DHAVE_SIGNAL_H")
+  set(CMAKE_EXTRA_INCLUDE_FILES "signal.h")
+endif()
+check_type_size("sig_atomic_t" SIZEOF_SIG_ATOMIC_T)
+if(HAVE_SIZEOF_SIG_ATOMIC_T)
+  check_c_source_compiles("
+    #ifdef HAVE_SIGNAL_H
+    #  include <signal.h>
+    #endif
+    int main(void) {
+      static volatile sig_atomic_t dummy = 0;
+      (void)dummy;
+      return 0;
+    }" HAVE_SIG_ATOMIC_T_NOT_VOLATILE)
+  if(NOT HAVE_SIG_ATOMIC_T_NOT_VOLATILE)
+    set(HAVE_SIG_ATOMIC_T_VOLATILE 1)
+  endif()
+endif()
+
+if(HAVE_WINDOWS_H)
+  set(CMAKE_EXTRA_INCLUDE_FILES winsock2.h)
+else()
+  set(CMAKE_EXTRA_INCLUDE_FILES)
+  if(HAVE_SYS_SOCKET_H)
+    set(CMAKE_EXTRA_INCLUDE_FILES sys/socket.h)
+  endif()
+endif()
+
+check_type_size("struct sockaddr_storage" SIZEOF_STRUCT_SOCKADDR_STORAGE)
+if(HAVE_SIZEOF_STRUCT_SOCKADDR_STORAGE)
+  set(HAVE_STRUCT_SOCKADDR_STORAGE 1)
+endif()
+
+unset(CMAKE_TRY_COMPILE_TARGET_TYPE)
+
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   # if not cross-compilation...
   include(CheckCSourceRuns)
@@ -222,38 +262,3 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     }" HAVE_POLL_FINE)
 endif()
 
-set(HAVE_SIG_ATOMIC_T 1)
-set(CMAKE_REQUIRED_FLAGS)
-if(HAVE_SIGNAL_H)
-  set(CMAKE_REQUIRED_FLAGS "-DHAVE_SIGNAL_H")
-  set(CMAKE_EXTRA_INCLUDE_FILES "signal.h")
-endif()
-check_type_size("sig_atomic_t" SIZEOF_SIG_ATOMIC_T)
-if(HAVE_SIZEOF_SIG_ATOMIC_T)
-  check_c_source_compiles("
-    #ifdef HAVE_SIGNAL_H
-    #  include <signal.h>
-    #endif
-    int main(void) {
-      static volatile sig_atomic_t dummy = 0;
-      (void)dummy;
-      return 0;
-    }" HAVE_SIG_ATOMIC_T_NOT_VOLATILE)
-  if(NOT HAVE_SIG_ATOMIC_T_NOT_VOLATILE)
-    set(HAVE_SIG_ATOMIC_T_VOLATILE 1)
-  endif()
-endif()
-
-if(HAVE_WINDOWS_H)
-  set(CMAKE_EXTRA_INCLUDE_FILES winsock2.h)
-else()
-  set(CMAKE_EXTRA_INCLUDE_FILES)
-  if(HAVE_SYS_SOCKET_H)
-    set(CMAKE_EXTRA_INCLUDE_FILES sys/socket.h)
-  endif()
-endif()
-
-check_type_size("struct sockaddr_storage" SIZEOF_STRUCT_SOCKADDR_STORAGE)
-if(HAVE_SIZEOF_STRUCT_SOCKADDR_STORAGE)
-  set(HAVE_STRUCT_SOCKADDR_STORAGE 1)
-endif()

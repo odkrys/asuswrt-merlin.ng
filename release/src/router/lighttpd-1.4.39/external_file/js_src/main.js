@@ -632,15 +632,15 @@ function parserPropfindXML(xmlDoc, open_url, append_result){
 			}
 			else if(y[j].nodeType==1&&y[j].nodeName=="D:href"){
 				this_href = String(y[j].childNodes[0].nodeValue);
-								
+				
 				var cur_host = "";
 							
 				if(this_href.match(/^http/)){						
 					cur_host = g_storage.get('request_host_url');
 				}
-									
+				
 				var cururl = cur_host + addPathSlash(open_url);
-																
+				
 				if(this_href!=cururl){
 					var o_url = open_url;								
 									
@@ -1093,7 +1093,7 @@ function refreshHostList(){
 					
 					//- Create host list
 					createHostList(this_query_type, folder_array);
-		  	}		  	
+		  		}		  	
 			}
 		}, null, 1);
 	}
@@ -1154,7 +1154,7 @@ function onMouseDownListDIVHandler(e, file_item){
 }
 
 function openSelItem(item){	
-
+	
 	var loc = (item.attr("uhref")==undefined) ? "" : item.attr("uhref");	
 	var qtype = (item.attr("qtype")==undefined) ? 0 : item.attr("qtype");
 	var isdir = (item.attr("isdir")==undefined) ? 0 : item.attr("isdir");
@@ -1466,10 +1466,9 @@ $(document).ready(function(){
 		g_storage.set("HostList", "");
 		
 		doPROPFIND( "/", function(){
-			if(loc!=undefined && loc!="/"){
+			if( loc!=undefined && loc!="/" && loc.indexOf("https://")==0 ){
 				doPROPFIND(loc);
 			}
-			
 		}, 0);
 	}
 	else{
@@ -2559,7 +2558,8 @@ $(document).ready(function(){
 				selectFileArray = null;
 			}
         },
-        items: {			
+        items: {
+			/*			
 			"submenu_upload": { 
 				name : m.getString("title_upload2"),
 				disabled: function(key, opt) {							
@@ -2591,16 +2591,16 @@ $(document).ready(function(){
 						name: m.getString("title_twitter")
 					}
                 }
-            },
+            },*/
 			"submenu_share": { 
 				name : m.getString("title_share2"),
                 items : {
                 	"share2facebook": {
 						name: m.getString("title_facebook")
 					},
-					"share2googleplus": {
-						name: m.getString("title_googleplus")
-					},
+					//"share2googleplus": {
+					//	name: m.getString("title_googleplus")
+					//},
 					"share2twitter": {
 						name: m.getString("title_twitter")
 					},
@@ -2853,7 +2853,7 @@ $(document).ready(function(){
 				}
 			},
 			"sep2": "---------",
-			"submenu_upload": { 
+			/*"submenu_upload": { 
 				name : m.getString("title_upload2"),
 				disabled: function(key, opt) {							
 					if(g_select_array.length<=0)
@@ -2884,16 +2884,16 @@ $(document).ready(function(){
 						name: m.getString("title_twitter")
 					}
                 }
-            },
+            },*/
 			"submenu_share": { 
 				name : m.getString("title_share2"),
                 items : {
                 	"share2facebook": {
 						name: m.getString("title_facebook")
 					},
-					"share2googleplus": {
-						name: m.getString("title_googleplus")
-					},
+					//"share2googleplus": {
+					//	name: m.getString("title_googleplus")
+					//},
 					"share2twitter": {
 						name: m.getString("title_twitter")
 					},

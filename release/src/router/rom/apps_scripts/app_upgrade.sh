@@ -25,9 +25,7 @@ esac
 APPS_PATH=/opt
 CONF_FILE=$APPS_PATH/etc/ipkg.conf
 ASUS_SERVER=`nvram get apps_ipkg_server`
-wget_timeout=`nvram get apps_wget_timeout`
-#wget_options="-nv -t 2 -T $wget_timeout --dns-timeout=120"
-wget_options="-q -t 2 -T $wget_timeout"
+wget_options="-q -t 2 -T 30"
 download_file=
 apps_new_arm=`nvram get apps_new_arm`  #sherry add 
 
@@ -156,7 +154,7 @@ _download_package(){
 	if [ "$pkg_type" != "arm" ] && [ -n "$apps_ipkg_old" ] && [ "$apps_ipkg_old" == "1" ]; then
 			IS_SUPPORT_SSL=`nvram get rc_support|grep -i HTTPS`
 			if [ -n "$IS_SUPPORT_SSL" ]; then
-				wget_options="$wget_options --no-check-certificate"
+				wget_options="$wget_options"
 			fi
 	fi
 
@@ -197,7 +195,7 @@ _download_package(){
 		return 1
 	fi
 	i=0
-	while [ $i -lt $wget_timeout ] && [ ! -f "$target" ]; do
+	while [ $i -lt 30 ] && [ ! -f "$target" ]; do
 		i=$((i+1))
 		sleep 1
 	done

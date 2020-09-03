@@ -1,7 +1,7 @@
 include ../Makefile.config
 
 ifeq ($(ASUSWRT_SDK),y)
-include $(SRCBASE)/router/.config
+-include $(SRCBASE)/router/.config
 
 CFLAGS = -Os -Wall $(EXTRACFLAGS) -fPIC
 CFLAGS += -I. -I$(TOP)/nt_center/
@@ -28,8 +28,8 @@ vpath %.c $(SRCBASE)/nt_center/
 
 ifeq ($(wildcard $(SRCBASE)/router/nt_center/lib/*.c),)
 all: 
-	-cp -f prebuild$(BCMEX)$(EXHND)/libnt.so libnt.so
-	-cp -f prebuild$(BCMEX)$(EXHND)/nt_db nt_db
+	-cp -f prebuild/$(BUILD_NAME)/libnt.so libnt.so
+	-cp -f prebuild/$(BUILD_NAME)/nt_db nt_db
 else
 all: libnt.so libnt.a nt_db
 endif

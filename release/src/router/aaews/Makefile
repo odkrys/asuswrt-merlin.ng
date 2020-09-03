@@ -8,7 +8,7 @@ include $(TOP)/.config
 CURL_DIR=$(TOP)/curl-7.21.7
 XML2_DIR=$(TOP)/libxml2
 OPENSSL_DIR=$(TOP)/openssl
-NVRAM_DIR=$(TOP)/nvram$(BCMEX)$(EX7)
+NVRAM_DIR=$(TOP_PLATFORM)/nvram$(BCMEX)$(EX7)
 JSON_C_DIR=$(TOP)/json-c
 SHARED_DIR=$(TOP)/shared
 WB_DIR=$(TOP)/wb
@@ -17,6 +17,7 @@ NT_CENTER_DIR=$(TOP)/nt_center
 ifeq ($(RTCONFIG_SW_HW_AUTH),y)
 SW_HW_AUTH_DIR=$(TOP)/sw-hw-auth
 endif
+SQLITE_DIR=$(TOP)/sqlite
 
 NATNL_DIR=$(TOP)/asusnatnl/natnl
 ASUSNATNL_CFLAGS=-I$(NATNL_DIR)
@@ -34,8 +35,8 @@ WSLIB_OBJS := $(WS_SOURCES:%.c=$(OUTPUT)/%.o)
 
 ifeq ($(wildcard $(TOP)/aaews/*.c),)
 all:
-	-cp -f $(TOP)/aaews/prebuild$(BCMEX)$(EXHND)/aaews aaews
-	-cp -f $(TOP)/aaews/prebuild$(BCMEX)$(EXHND)/mastiff mastiff
+	-cp -f $(TOP)/aaews/prebuild/$(BUILD_NAME)/aaews aaews
+	-cp -f $(TOP)/aaews/prebuild/$(BUILD_NAME)/mastiff mastiff
 else
 all: $(WSLIB) $(TARGET)
 endif
@@ -50,6 +51,12 @@ ROUTER_LDFLAGS=-L$(NVRAM_DIR) -L$(SHARED_DIR) -L$(QCSAPI_DIR)
 else
 ROUTER_LIBS=-lnvram -lshared
 ROUTER_LDFLAGS=-L$(NVRAM_DIR) -L$(SHARED_DIR)
+endif
+ifeq ($(RTCONFIG_NOTIFICATION_CENTER),y)
+ROUTER_LIBS += -lsqlite3
+ROUTER_LDFLAGS += -L$(SQLITE_DIR)/.libs
+ROUTER_LIBS += -lnt
+ROUTER_LDFLAGS += -L$(NT_CENTER_DIR)/lib
 endif
 endif
 
@@ -77,7 +84,7 @@ CFLAGS += $(ASUSNATNL_CFLAGS)
 CFLAGS += $(AICAM_CFLAGS)
 CFLAGS += $(ROUTER_CFLAGS)
 
-LIBS = -lcurl -lssl -lcrypto -lxml2 -ljson-c -ldl -pthread -lrt $(ROUTER_LIBS) -lws
+LIBS = -lcurl -lssl -lcrypto -lxml2 -ljson-c -ldl -pthread -lrt $(ROUTER_LIBS) -lws -lgcc_s
 LDFLAGS = -L$(OPENSSL_DIR) -L$(CURL_DIR)/lib/.libs -L$(XML2_DIR)/.libs -L$(JSON_C_DIR)/.libs -L. $(ROUTER_LDFLAGS) -L$(WS_SRC) -L$(WB_DIR) -L$(WB_DIR)/output
 ifeq ($(RTCONFIG_QCA),y)
 LDFLAGS += -L$(LIBDIR) -lm
@@ -85,7 +92,7 @@ endif
 
 ifeq ($(HND_ROUTER),y)
 CFLAGS += -DPTHREAD_STACK_SIZE=0x51200
-LDFLAGS += -L$(TOP)/wlcsm -lwlcsm -lgcc_s
+LDFLAGS += -L$(TOP_PLATFORM)/wlcsm$(EXHND) -lwlcsm
 endif
 
 ifeq ($(RTCONFIG_BCMARM),y)
@@ -98,7 +105,7 @@ endif
 
 ifeq ($(wildcard $(TOP)/aaews/*.c),)
 $(DOG):
-	-cp -f $(TOP)/aaews/prebuild$(BCMEX)$(EXHND)/mastiff mastiff
+	-cp -f $(TOP)/aaews/prebuild/$(BUILD_NAME)/mastiff mastiff
 else
 $(DOG): $(DOG).o nat_nvram.o  ws_caller.o nw_util.o natapi.o $(WSLIB_OBJS) info_report.o
 	$(CC) -fPIC $(CFLAGS) $(LDFLAGS) $(LIBS) $(ROUTER_LDFLAGS) $(ROUTER_LIBS) -o $@ $^ 
@@ -108,9 +115,9 @@ aicam:$(TARGET)
 
 ifeq ($(wildcard $(TOP)/aaews/*.c),)
 router:
-	-cp -f $(TOP)/aaews/prebuild$(BCMEX)$(EXHND)/aaews aaews
+	-cp -f $(TOP)/aaews/prebuild/$(BUILD_NAME)/aaews aaews
 else
-router: $(WSLIB) $(TARGET)
+router: $(WSLIB) $(TARGET) $(DOG)
 endif
 $(WSLIB):
 	cd $(WB_DIR) && \

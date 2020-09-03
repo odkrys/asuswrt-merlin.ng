@@ -1,8 +1,8 @@
-/* $Id: miniupnpd.c,v 1.232 2018/07/06 12:35:26 nanard Exp $ */
+/* $Id: miniupnpd.c,v 1.235 2019/05/21 08:39:43 nanard Exp $ */
 /* vim: tabstop=4 shiftwidth=4 noexpandtab
  * MiniUPnP project
  * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
- * (c) 2006-2018 Thomas Bernard
+ * (c) 2006-2019 Thomas Bernard
  * This software is subject to the conditions detailed
  * in the LICENCE file provided within the distribution */
 
@@ -993,11 +993,13 @@ parselanaddr(struct lan_addr_s * lan_addr, const char * str)
 				fprintf(stderr, "Error parsing address : %s\n", lan_addr->ext_ip_str);
 				return -1;
 			}
+#if 0
 			if(addr_is_reserved(&lan_addr->ext_ip_addr)) {
 				/* error */
 				fprintf(stderr, "Error: option ext_ip address contains reserved / private address : %s\n", lan_addr->ext_ip_str);
 				return -1;
 			}
+#endif
 		}
 	}
 #endif
@@ -1178,6 +1180,11 @@ init(int argc, char * * argv, struct runtime_vars * v)
 			case UPNPEXT_IFNAME:
 				ext_if_name = ary_options[i].value;
 				break;
+#ifdef ENABLE_IPV6
+			case UPNPEXT_IFNAME6:
+				ext_if_name6 = ary_options[i].value;
+				break;
+#endif
 			case UPNPEXT_IP:
 				use_ext_ip_addr = ary_options[i].value;
 				break;
@@ -1501,6 +1508,14 @@ init(int argc, char * * argv, struct runtime_vars * v)
 			else
 				fprintf(stderr, "Option -%c takes one argument.\n", argv[i][1]);
 			break;
+#ifdef ENABLE_IPV6
+		case 'I':
+			if(i+1 < argc)
+				ext_if_name6 = argv[++i];
+			else
+				fprintf(stderr, "Option -%c takes one argument.\n", argv[i][1]);
+			break;
+#endif
 #ifdef USE_PF
 		case 'q':
 			if(i+1 < argc)
@@ -1672,11 +1687,16 @@ init(int argc, char * * argv, struct runtime_vars * v)
 			fprintf(stderr, "Unknown option: %s\n", argv[i]);
 		}
 	}
-	if(!ext_if_name || !lan_addrs.lh_first)
-	{
+	if(!ext_if_name || !lan_addrs.lh_first) {
 		/* bad configuration */
 		goto print_usage;
 	}
+
+	/* IPv6 ifname is defaulted to same as IPv4 */
+#ifdef ENABLE_IPV6
+	if(!ext_if_name6)
+		ext_if_name6 = ext_if_name;
+#endif
 
 	if (use_ext_ip_addr && GETFLAG(PERFORMSTUNMASK)) {
 		fprintf(stderr, "Error: options ext_ip= and ext_perform_stun=yes cannot be specified together\n");
@@ -1688,10 +1708,12 @@ init(int argc, char * * argv, struct runtime_vars * v)
 			fprintf(stderr, "Error: option ext_ip contains invalid address %s\n", use_ext_ip_addr);
 			return 1;
 		}
+#if 0
 		if (addr_is_reserved(&addr)) {
 			fprintf(stderr, "Error: option ext_ip contains reserved / private address %s, not public routable\n", use_ext_ip_addr);
 			return 1;
 		}
+#endif
 	}
 
 	if(debug_flag)
@@ -1825,7 +1847,11 @@ print_usage:
 #ifndef DISABLE_CONFIG_FILE
 			"[-f config_file] "
 #endif
-			"[-i ext_ifname] [-o ext_ip]\n"
+			"[-i ext_ifname] "
+#ifdef ENABLE_IPV6
+			"[-I ext_ifname6] "
+#endif
+			"[-o ext_ip]\n"
 #ifndef MULTIPLE_EXTERNAL_IP
 			"\t\t[-a listening_ip]"
 #else
@@ -2011,6 +2037,11 @@ main(int argc, char * * argv)
 #endif
 	       GETFLAG(ENABLEUPNPMASK) ? "UPnP-IGD " : "",
 	       ext_if_name, upnp_bootid);
+#ifdef ENABLE_IPV6
+	if (ext_if_name6 != ext_if_name) {
+		syslog(LOG_INFO, "specific IPv6 ext if %s", ext_if_name6);
+	}
+#endif
 
 	if(GETFLAG(PERFORMSTUNMASK))
 	{
@@ -2068,7 +2099,7 @@ main(int argc, char * * argv)
 #else /* ENABLE_IPV6 */
 		shttpsl = OpenAndConfHTTPSocket(&listen_port);
 #endif /* ENABLE_IPV6 */
-		if(shttpl < 0)
+		if(shttpsl < 0)
 		{
 			syslog(LOG_ERR, "Failed to open socket for HTTPS. EXITING");
 			return 1;

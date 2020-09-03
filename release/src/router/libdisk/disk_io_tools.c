@@ -23,6 +23,7 @@
 #include <sys/vfs.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <limits.h>		//PATH_MAX, LONG_MIN, LONG_MAX
 
 #include <shared.h>
 
@@ -103,17 +104,17 @@ extern int test_if_System_folder(const char *const dirname){
 	char *ptr;
 
 	for(i = 0; MS_System_folder[i] != NULL; ++i){
-		if(!upper_strcmp(dirname, MS_System_folder[i]))
+		if(strcasecmp(dirname, MS_System_folder[i]) == 0)
 			return 1;
 	}
 
 	for(i = 0; Linux_System_folder[i] != NULL; ++i){
-		if(!upper_strcmp(dirname, Linux_System_folder[i]))
+		if(strcasecmp(dirname, Linux_System_folder[i]) == 0)
 			return 1;
 	}
 
 	for(i = 0; Mac_System_folder[i] != NULL; ++i){
-		if(!upper_strcmp(dirname, Mac_System_folder[i]))
+		if(strcasecmp(dirname, Mac_System_folder[i]) == 0)
 			return 1;
 	}
 
@@ -123,7 +124,7 @@ extern int test_if_System_folder(const char *const dirname){
 		return 1;
 
 	for(i = 0; ASUS_System_folder[i] != NULL; ++i){
-		if(!upper_strncmp(dirname, ASUS_System_folder[i], strlen(ASUS_System_folder[i])))
+		if(strncasecmp(dirname, ASUS_System_folder[i], strlen(ASUS_System_folder[i])) == 0)
 			return 1;
 	}
 

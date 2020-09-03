@@ -14,6 +14,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -442,7 +446,11 @@ extern int initial_var_file(const char *const account, const char *const mount_p
 	get_all_folder(mount_path, &sh_num, &folder_list);
 
 	// 2. get the var file
+#if defined(RTCONFIG_PERMISSION_MANAGEMENT)
+	if(get_var_file_name(account, mount_path, &var_file, is_group)){
+#else
 	if(get_var_file_name(account, mount_path, &var_file, 0)){
+#endif
 		usb_dbg("Can't malloc \"var_file\".\n");
 		free_2_dimension_list(&sh_num, &folder_list);
 		return -1;
@@ -868,7 +876,11 @@ extern int modify_if_exist_new_folder(const char *const account, const char *con
 #endif
 	
 	// 1. get the var file
+#if defined(RTCONFIG_PERMISSION_MANAGEMENT)
+	if(get_var_file_name(account, mount_path, &var_file, is_group)){
+#else
 	if(get_var_file_name(account, mount_path, &var_file, 0)){
+#endif
 		usb_dbg("Can't malloc \"var_file\".\n");
 		return -1;
 	}
@@ -1018,7 +1030,7 @@ int get_permission(const char *const account,
 	snprintf(target, (len+1), "*%s=", (f != NULL)?f:"");
 	target[len] = 0;
 
-	follow_info = upper_strstr(var_info, target);
+	follow_info = strcasestr(var_info, target);
 	free(target);
 	if (follow_info == NULL) {
 		if (account == NULL)
@@ -1133,7 +1145,7 @@ retry_get_permission:
 	snprintf(target, (len+1), "*%s=", (f != NULL)?f:"");
 	target[len] = 0;
 	
-	follow_info = upper_strstr(var_info, target);
+	follow_info = strcasestr(var_info, target);
 	free(target);
 	if (follow_info == NULL) {
 		if(account == NULL)
@@ -1253,7 +1265,7 @@ int set_permission(const char *const account,
 	target[len] = 0;
 
 	// 5. judge if the target is in the var file.
-	follow_info = upper_strstr(var_info, target);
+	follow_info = strcasestr(var_info, target);
 	if (follow_info == NULL) {
 		if (account == NULL)
 			usb_dbg("No right about \"%s\" with the share mode.\n",
@@ -1429,7 +1441,7 @@ extern int set_permission(const char *const account,
 	target[len] = 0;
 	
 	// 5. judge if the target is in the var file.
-	follow_info = upper_strstr(var_info, target);
+	follow_info = strcasestr(var_info, target);
 	if (follow_info == NULL) {
 		if(account == NULL)
 			usb_dbg("No right about \"%s\" with the share mode.\n", (folder == NULL?"Pool":folder));
@@ -1583,7 +1595,7 @@ int add_folder_at_var_file(const char *const account,
 		free(var_file);
 		free(target);
 		return -1;
-	} else if (upper_strstr(var_info, target) != NULL) {
+	} else if (strcasestr(var_info, target) != NULL) {
 		free(var_file);
 		free(target);
 		free(var_info);
@@ -1792,7 +1804,7 @@ int del_folder_at_var_file(const char *const account,
 		return -1;
 	}
 
-	follow_info = upper_strstr(var_info, target);
+	follow_info = strcasestr(var_info, target);
 	free(target);
 	if (follow_info == NULL) {
 		free(var_file);
@@ -1986,7 +1998,7 @@ int mod_folder_at_var_file(const char *const account,
 		return -1;
 	}
 
-	if ((follow_info = upper_strstr(var_info, target)) == NULL) {
+	if ((follow_info = strcasestr(var_info, target)) == NULL) {
 		usb_dbg("%s: No \"%s\" in \"%s\"..\n", __FUNCTION__, folder,
 			var_file);
 		free(var_file);
@@ -2161,7 +2173,7 @@ extern int test_if_exist_share(const char *const mount_path, const char *const f
 	
 	result = 0;
 	for(i = 0; i < sh_num; ++i)
-		if(!upper_strcmp(folder, folder_list[i])){
+		if(strcasecmp(folder, folder_list[i]) == 0){
 			result = 1;
 			break;
 		}
@@ -2311,7 +2323,7 @@ extern int add_account(const char *const account, const char *const password){
 	int acc_num;
 	int len;
 	char nvram_value[PATH_MAX], *ptr;
-	char ascii_user[64], ascii_passwd[64];
+	char ascii_user[64], ascii_passwd[84];
 	int lock;
 
 	if(account == NULL || strlen(account) <= 0){
@@ -2332,15 +2344,17 @@ extern int add_account(const char *const account, const char *const password){
 
 	memset(ascii_passwd, 0, sizeof(ascii_passwd));
 	char_to_ascii_safe(ascii_passwd, password, sizeof(ascii_passwd));
-
 #ifdef RTCONFIG_NVRAM_ENCRYPT
 	int enclen = pw_enc_blen(ascii_passwd);
 	char enc_passwd[enclen];
+	char passwdbuf[NVRAM_ENC_MAXLEN];
 
-	memset(enc_passwd, 0, sizeof(enc_passwd));
-	pw_enc(ascii_passwd, enc_passwd);
-	memset(ascii_passwd, 0, sizeof(ascii_passwd));
-	strlcpy(ascii_passwd, enc_passwd, sizeof(ascii_passwd));
+	if(!pw_dec(password, passwdbuf, sizeof(passwdbuf))){
+		pw_enc(ascii_passwd, enc_passwd);
+		strlcpy(ascii_passwd, enc_passwd, sizeof(ascii_passwd));
+	}else{
+		strlcpy(ascii_passwd, password, sizeof(ascii_passwd));
+	}
 #endif
 
 	acc_num = nvram_get_int("acc_num");

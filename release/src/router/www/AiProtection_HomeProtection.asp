@@ -19,6 +19,9 @@
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/asus_eula.js"></script>
 <style>
+*{
+	box-sizing: content-box;
+}
 .weakness{
 	width:650px;
 	height:590px;
@@ -83,9 +86,9 @@
 
 .alertpreference{
 	width:650px;
-	height:290px;
+	height:330px;
 	position:absolute;
-	background: rgba(0,0,0,0.8);
+	background: rgba(0,0,0,0.9);
 	z-index:10;
 	margin-left:260px;
 	border-radius:10px;
@@ -131,6 +134,7 @@
 	display: none;
 	border-radius: 10px;
 }
+
 .shadow_m{
 	margin-top: -9px;
 }
@@ -157,19 +161,22 @@ var safe_count = 0;
 
 function initial(){
 	show_menu();
-	//	http://www.asus.com/support/FAQ/1008719/
-	httpApi.faqURL("faq", "1008719", "https://www.asus.com", "/support/FAQ/");
-	if(lyra_hide_support){
+	//	https://www.asus.com/support/FAQ/1008719/
+	httpApi.faqURL("1008719", function(url){document.getElementById("faq").href=url;});
+	if(based_modelid == "MAP-AC1750"){
 		$("#scenario_tr").css({"visibility":"hidden"});
 		$("#scenario_img").attr({"height":"0"});
 		$("#security_scan_tr").hide();
 		$(".AiProtection_02").hide();
 		$(".AiProtection_03").hide();
-		$(".line_1").hide();
-		if(!uiSupport("dpi_vp")){
-			$("#twoWayIPS_padding").hide();
-			$("#twoWayIPS_field").hide();
-		}
+		$(".line_1").hide();	
+		$("#tm_logo").css("margin-left", "10px");
+	}
+
+	if(!isSupport("dpi_vp")){
+		$("#twoWayIPS_padding").hide();
+		$("#twoWayIPS_field").hide();
+		$("#vp_service_field").hide();
 	}
 
 	if(document.form.wrs_protect_enable.value == '1'){
@@ -184,6 +191,9 @@ function initial(){
 	check_weakness();
 
 	$("#all_security_btn").hide();
+
+	if(!ASUS_EULA.status("tm"))
+		ASUS_EULA.config(eula_confirm, cancel);
 }
 
 function getEventTime(){
@@ -273,19 +283,17 @@ function applyRule(){
 		}
 	}
 
-	if(reset_wan_to_fo(document.form, document.form.wrs_protect_enable.value)) {
-		showLoading();
-		document.form.submit();
+	/* when qca_sfe = 1, avoid fast-classifier can't be disabled in run-time */
+	if (based_modelid == "MAP-AC1750") {
+		document.form.action_script.value = "reboot";
+		document.form.action_wait.value = "<% nvram_get("reboot_time"); %>";
 	}
-	else {
-		curState = 0;
-		document.form.wrs_protect_enable.value = "0";
-		$('#radio_protection_enable').find('.iphone_switch').animate({backgroundPosition: -37}, "slow");
-		shadeHandle('0');
-		if($('#agreement_panel').css('display') == "block") {
-			refreshpage();
-		}
-	}
+
+	if(reset_wan_to_fo.change_status)
+		reset_wan_to_fo.change_wan_mode(document.form);
+
+	showLoading();
+	document.form.submit();
 }
 
 function showWeaknessTable(){
@@ -783,6 +791,24 @@ function eula_confirm(){
 	document.form.action_wait.value = "15";
 	applyRule();
 }
+function switch_control(_status){
+	if(_status) {
+		if(reset_wan_to_fo.check_status()) {
+			if(ASUS_EULA.check("tm")){
+				document.form.wrs_protect_enable.value = "1";
+				shadeHandle("1");
+				applyRule();
+			}
+		}
+		else
+			cancel();
+	}
+	else {
+		document.form.wrs_protect_enable.value = "0";
+		shadeHandle("0");
+		applyRule();
+	}
+}
 
 function show_alert_preference(){
 	cal_panel_block("alert_preference", 0.25);
@@ -815,6 +841,12 @@ function apply_alert_preference(){
 
 	if(address_temp == "") {
 		alert("Please input the mail account!");
+		return;
+	}
+
+	if(address_temp.indexOf("`")!=-1){
+		alert("` "+ " <#JS_validchar#>");
+		document.getElementById('mail_address').focus();
 		return;
 	}
 
@@ -894,7 +926,7 @@ function shadeHandle(flag){
 </script>
 </head>
 
-<body onload="initial();" onunload="unload_body();">
+<body onload="initial();" onunload="unload_body();" class="bg">
 <div id="TopBanner"></div>
 <div id="Loading" class="popup_bg"></div>
 <div id="hiddenMask" class="popup_bg" style="z-index:999;">
@@ -990,7 +1022,7 @@ function shadeHandle(flag){
 								<div id="wrs_service"></div>
 							</td>
 						</tr>
-						<tr>
+						<tr id="vp_service_field">
 							<th><#AiProtection_scan_item13#> -</th>
 							<td>
 								<div id="vp_service"></div>
@@ -1070,12 +1102,18 @@ function shadeHandle(flag){
 						<th><#Notification_Item#></th>
 						<td>
 							<div>
-								<input type="checkbox" class="" id="mal_website_item" value="">
-								<label><#AiProtection_sites_blocking#></label>
-								<input type="checkbox" class="" id="vp_item" value="">
-								<label><#AiProtection_Vulnerability#></label>
-								<input type="checkbox" class="" id="cc_item" value="">
-								<label><#AiProtection_detection_blocking#></label>
+								<div>
+									<input type="checkbox" id="mal_website_item">
+									<span style="color: #FFF;"><#AiProtection_sites_blocking#></span>
+								</div>
+								<div>
+									<input type="checkbox" id="vp_item">
+									<span style="color: #FFF;"><#AiProtection_two-way_IPS#></span>
+								</div>
+								<div>
+									<input type="checkbox" id="cc_item">
+									<span style="color: #FFF;"><#AiProtection_detection_blocking#></span>
+								</div>
 							</div>
 						</td>
 					</tr>
@@ -1170,13 +1208,13 @@ function shadeHandle(flag){
 													<table>
 														<tr>
 															<td>
-																<div style="width:430px"><#AiProtection_desc#></div>
+																<div style="width:430px"><#AiProtection_HomeDesc2#></div>
 																<div style="width:430px">
 																	<a id="faq" style="text-decoration:underline;" href="" target="_blank"><#AiProtection_title#> FAQ</a>
 																</div>
 															</td>
 															<td>
-																<div style="width:100px;height:48px;margin-left:-40px;background-image:url('images/New_ui/tm_logo.png');"></div>
+																<div id="tm_logo" style="width:100px;height:48px;margin-left:-40px;background-image:url('images/New_ui/tm_logo.png');"></div>
 															</td>
 														</tr>
 														<tr id="scenario_tr">
@@ -1201,18 +1239,10 @@ function shadeHandle(flag){
 														<script type="text/javascript">
 															$('#radio_protection_enable').iphoneSwitch('<% nvram_get("wrs_protect_enable"); %>',
 																function(){
-																	ASUS_EULA.config(eula_confirm, cancel);
-
-																	if(ASUS_EULA.check("tm")){
-																		document.form.wrs_protect_enable.value = "1";
-																		shadeHandle("1");
-																		applyRule();
-																	}
+																	switch_control(1);
 																},
 																function(){
-																	document.form.wrs_protect_enable.value = "0";
-																	shadeHandle("0");
-																	applyRule();
+																	switch_control(0);
 																}
 															);
 														</script>
@@ -1414,7 +1444,7 @@ function shadeHandle(flag){
 											<input class="button_gen" type="button" onclick="show_alert_preference();" value="<#AiProtection_alert_pref#>">
 										</div>
 									</div>
-									<div style="width:135px;height:55px;margin: -10px 0 0 600px;background-image:url('images/New_ui/tm_logo_power.png');"></div>
+									<div style="width:96px;height:44px;margin: 10px 0 0 600px;background-image:url('images/New_ui/TrendMirco_logo.svg');background-size: 100%;"></div>
 								</td>
 							</tr>
 							</tbody>

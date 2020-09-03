@@ -6,7 +6,7 @@
  *                             \___|\___/|_| \_\_____|
  *
  * Web crawler based on curl and libxml2.
- * Copyright (C) 2018 Jeroen Ooms <jeroenooms@gmail.com>
+ * Copyright (C) 2018 - 2019 Jeroen Ooms <jeroenooms@gmail.com>
  * License: MIT
  *
  * To compile:
@@ -81,7 +81,7 @@ CURL *make_handle(char *url)
   curl_easy_setopt(handle, CURLOPT_PRIVATE, mem);
 
   /* For completeness */
-  curl_easy_setopt(handle, CURLOPT_ENCODING, "gzip, deflate");
+  curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "");
   curl_easy_setopt(handle, CURLOPT_TIMEOUT, 5L);
   curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L);
   curl_easy_setopt(handle, CURLOPT_MAXREDIRS, 10L);

@@ -1,113 +1,5 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* CPU and C ABI indicator */
-#ifndef __i386__
-#undef __i386__
-#endif
-#ifndef __x86_64_x32__
-#undef __x86_64_x32__
-#endif
-#ifndef __x86_64__
-#undef __x86_64__
-#endif
-#ifndef __alpha__
-#undef __alpha__
-#endif
-#ifndef __arm__
-#undef __arm__
-#endif
-#ifndef __armhf__
-#undef __armhf__
-#endif
-#ifndef __arm64_ilp32__
-#undef __arm64_ilp32__
-#endif
-#ifndef __arm64__
-#undef __arm64__
-#endif
-#ifndef __hppa__
-#undef __hppa__
-#endif
-#ifndef __hppa64__
-#undef __hppa64__
-#endif
-#ifndef __ia64_ilp32__
-#undef __ia64_ilp32__
-#endif
-#ifndef __ia64__
-#undef __ia64__
-#endif
-#ifndef __m68k__
-#undef __m68k__
-#endif
-#ifndef __mips__
-#undef __mips__
-#endif
-#ifndef __mipsn32__
-#undef __mipsn32__
-#endif
-#ifndef __mips64__
-#undef __mips64__
-#endif
-#ifndef __powerpc__
-#undef __powerpc__
-#endif
-#ifndef __powerpc64__
-#undef __powerpc64__
-#endif
-#ifndef __powerpc64_elfv2__
-#undef __powerpc64_elfv2__
-#endif
-#ifndef __riscv32__
-#undef __riscv32__
-#endif
-#ifndef __riscv64__
-#undef __riscv64__
-#endif
-#ifndef __riscv32_ilp32__
-#undef __riscv32_ilp32__
-#endif
-#ifndef __riscv32_ilp32f__
-#undef __riscv32_ilp32f__
-#endif
-#ifndef __riscv32_ilp32d__
-#undef __riscv32_ilp32d__
-#endif
-#ifndef __riscv64_ilp32__
-#undef __riscv64_ilp32__
-#endif
-#ifndef __riscv64_ilp32f__
-#undef __riscv64_ilp32f__
-#endif
-#ifndef __riscv64_ilp32d__
-#undef __riscv64_ilp32d__
-#endif
-#ifndef __riscv64_lp64__
-#undef __riscv64_lp64__
-#endif
-#ifndef __riscv64_lp64f__
-#undef __riscv64_lp64f__
-#endif
-#ifndef __riscv64_lp64d__
-#undef __riscv64_lp64d__
-#endif
-#ifndef __s390__
-#undef __s390__
-#endif
-#ifndef __s390x__
-#undef __s390x__
-#endif
-#ifndef __sh__
-#undef __sh__
-#endif
-#ifndef __sparc__
-#undef __sparc__
-#endif
-#ifndef __sparc64__
-#undef __sparc64__
-#endif
-
-
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
 
@@ -138,9 +30,6 @@
 /* Define to 1 if using `alloca.c'. */
 #undef C_ALLOCA
 
-/* Define to 1 if the C locale may have encoding errors. */
-#undef C_LOCALE_MAYBE_EILSEQ
-
 /* Define as the bit index in the word where to find bit 0 of the exponent of
    'double'. */
 #undef DBL_EXPBIT0_BIT
@@ -166,9 +55,6 @@
 # define DIR_TO_FD(Dir_p) -1
 #endif
 
-
-/* Define this to disable text wrapping as root by default. */
-#undef DISABLE_ROOTWRAPPING
 
 /* Define this to enable the built-in file browser. */
 #undef ENABLE_BROWSER
@@ -226,12 +112,10 @@
 #undef ENABLE_WRAPPING
 
 /* Define to nothing if C supports flexible array members, and to 1 if it does
-   not. That way, with a declaration like 'struct s { int n; double
+   not. That way, with a declaration like 'struct s { int n; short
    d[FLEXIBLE_ARRAY_MEMBER]; };', the struct hack can be used with pre-C99
-   compilers. When computing the size of such an object, don't use 'sizeof
-   (struct s)' as it overestimates the size. Use 'offsetof (struct s, d)'
-   instead. Don't use 'offsetof (struct s, d[0])', as this doesn't work with
-   MSVC and with C++ compilers. */
+   compilers. Use 'FLEXSIZEOF (struct s, d, N * sizeof (short))' to calculate
+   the size in bytes of such a struct containing an N-element array. */
 #undef FLEXIBLE_ARRAY_MEMBER
 
 /* Define as the bit index in the word where to find bit 0 of the exponent of
@@ -263,6 +147,10 @@
 /* Define to a C preprocessor expression that evaluates to 1 or 0, depending
    whether the gnulib module fscanf shall be considered present. */
 #undef GNULIB_FSCANF
+
+/* Define to a C preprocessor expression that evaluates to 1 or 0, depending
+   whether the gnulib module isblank shall be considered present. */
+#undef GNULIB_ISBLANK
 
 /* Define to a C preprocessor expression that evaluates to 1 or 0, depending
    whether the gnulib module lock shall be considered present. */
@@ -317,6 +205,9 @@
 /* Define to 1 when the gnulib module getlogin_r should be tested. */
 #undef GNULIB_TEST_GETLOGIN_R
 
+/* Define to 1 when the gnulib module getopt-posix should be tested. */
+#undef GNULIB_TEST_GETOPT_POSIX
+
 /* Define to 1 when the gnulib module gettimeofday should be tested. */
 #undef GNULIB_TEST_GETTIMEOFDAY
 
@@ -365,6 +256,9 @@
 /* Define to 1 when the gnulib module readdir should be tested. */
 #undef GNULIB_TEST_READDIR
 
+/* Define to 1 when the gnulib module setlocale_null should be tested. */
+#undef GNULIB_TEST_SETLOCALE_NULL
+
 /* Define to 1 when the gnulib module sigaction should be tested. */
 #undef GNULIB_TEST_SIGACTION
 
@@ -397,9 +291,6 @@
 
 /* Define to 1 when the gnulib module wcwidth should be tested. */
 #undef GNULIB_TEST_WCWIDTH
-
-/* Define this if the system supports GNU-style word boundaries in regexes. */
-#undef GNU_WORDBOUNDS
 
 /* Define to 1 if you have 'alloca' after including <alloca.h>, a header that
    may be supplied by this distribution. */
@@ -747,6 +638,9 @@
 /* Define to 1 if you have the `opendir' function. */
 #undef HAVE_OPENDIR
 
+/* Define if you have the <pthread.h> header and the POSIX threads API. */
+#undef HAVE_PTHREAD_API
+
 /* Define if the <pthread.h> defines PTHREAD_MUTEX_RECURSIVE. */
 #undef HAVE_PTHREAD_MUTEX_RECURSIVE
 
@@ -899,6 +793,12 @@
 /* Define to 1 if you have the <termios.h> header file. */
 #undef HAVE_TERMIOS_H
 
+/* Define to 1 if you have the `thrd_create' function. */
+#undef HAVE_THRD_CREATE
+
+/* Define to 1 if you have the <threads.h> header file. */
+#undef HAVE_THREADS_H
+
 /* Define to 1 if you have the `towlower' function. */
 #undef HAVE_TOWLOWER
 
@@ -923,6 +823,10 @@
 
 /* Define to 1 if you have the `vasnprintf' function. */
 #undef HAVE_VASNPRINTF
+
+/* Define to 1 or 0, depending whether the compiler supports simple visibility
+   declarations. */
+#undef HAVE_VISIBILITY
 
 /* Define to 1 if you have the `vsnprintf' function. */
 #undef HAVE_VSNPRINTF
@@ -950,6 +854,10 @@
 
 /* Define to 1 if you have the `wcwidth' function. */
 #undef HAVE_WCWIDTH
+
+/* Define to 1 if the compiler and linker support weak declarations of
+   symbols. */
+#undef HAVE_WEAK_SYMBOLS
 
 /* Define to 1 if you have the <winsock2.h> header file. */
 #undef HAVE_WINSOCK2_H
@@ -1028,6 +936,10 @@
    */
 #undef MBRTOWC_EMPTY_INPUT_BUG
 
+/* Define if the mbrtowc function may signal encoding errors in the C locale.
+   */
+#undef MBRTOWC_IN_C_LOCALE_MAYBE_EILSEQ
+
 /* Define if the mbrtowc function has the NULL pwc argument bug. */
 #undef MBRTOWC_NULL_ARG1_BUG
 
@@ -1039,6 +951,10 @@
 
 /* Define if the mbrtowc function returns a wrong return value. */
 #undef MBRTOWC_RETVAL_BUG
+
+/* Define if the mbrtowc function stores a wide character when reporting
+   incomplete input. */
+#undef MBRTOWC_STORES_INCOMPLETE_BUG
 
 /* Use GNU style printf and scanf.  */
 #ifndef __USE_MINGW_ANSI_STDIO
@@ -1161,6 +1077,12 @@
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE
 
+/* Define to 1 if setlocale (LC_ALL, NULL) is multithread-safe. */
+#undef SETLOCALE_NULL_ALL_MTSAFE
+
+/* Define to 1 if setlocale (category, NULL) is multithread-safe. */
+#undef SETLOCALE_NULL_ONE_MTSAFE
+
 /* Define to l, ll, u, ul, ull, etc., as suitable for constants of type
    'sig_atomic_t'. */
 #undef SIG_ATOMIC_T_SUFFIX
@@ -1193,6 +1115,13 @@
    timespec. */
 #undef TYPEOF_STRUCT_STAT_ST_ATIM_IS_STRUCT_TIMESPEC
 
+/* Define if the combination of the ISO C and POSIX multithreading APIs can be
+   used. */
+#undef USE_ISOC_AND_POSIX_THREADS
+
+/* Define if the ISO C multithreading library can be used. */
+#undef USE_ISOC_THREADS
+
 /* Define if the POSIX multithreading library can be used. */
 #undef USE_POSIX_THREADS
 
@@ -1200,23 +1129,9 @@
    weak. */
 #undef USE_POSIX_THREADS_WEAK
 
-/* Define if the GNU Pth multithreading library can be used. */
-#undef USE_PTH_THREADS
-
-/* Define if references to the GNU Pth multithreading library should be made
-   weak. */
-#undef USE_PTH_THREADS_WEAK
-
 /* Define this to use the slang wrappers for curses instead of native curses.
    */
 #undef USE_SLANG
-
-/* Define if the old Solaris multithreading library can be used. */
-#undef USE_SOLARIS_THREADS
-
-/* Define if references to the old Solaris multithreading library should be
-   made weak. */
-#undef USE_SOLARIS_THREADS_WEAK
 
 /* Enable extensions on AIX 3, Interix.  */
 #ifndef _ALL_SOURCE
@@ -1301,6 +1216,12 @@
    'wchar_t'. */
 #undef WCHAR_T_SUFFIX
 
+/* Define if the wcrtomb function does not work in the C locale. */
+#undef WCRTOMB_C_LOCALE_BUG
+
+/* Define if the wcrtomb function has an incorrect return value. */
+#undef WCRTOMB_RETVAL_BUG
+
 /* Define to l, ll, u, ul, ull, etc., as suitable for constants of type
    'wint_t'. */
 #undef WINT_T_SUFFIX
@@ -1316,9 +1237,6 @@
 #  undef WORDS_BIGENDIAN
 # endif
 #endif
-
-/* Enable large inode numbers on Mac OS X 10.5. */
-#undef _DARWIN_USE_64_BIT_INODE
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 #undef _FILE_OFFSET_BITS
@@ -1337,10 +1255,23 @@
 
 /* The _Noreturn keyword of C11.  */
 #ifndef _Noreturn
-# if 201103 <= (defined __cplusplus ? __cplusplus : 0)
+# if (defined __cplusplus \
+      && ((201103 <= __cplusplus && !(__GNUC__ == 4 && __GNUC_MINOR__ == 7)) \
+          || (defined _MSC_VER && 1900 <= _MSC_VER)) \
+      && 0)
+    /* [[noreturn]] is not practically usable, because with it the syntax
+         extern _Noreturn void func (...);
+       would not be valid; such a declaration would only be valid with 'extern'
+       and '_Noreturn' swapped, or without the 'extern' keyword.  However, some
+       AIX system header files and several gnulib header files use precisely
+       this syntax with 'extern'.  */
 #  define _Noreturn [[noreturn]]
-# elif (201112 <= (defined __STDC_VERSION__ ? __STDC_VERSION__ : 0) \
-        || 4 < __GNUC__ + (7 <= __GNUC_MINOR__))
+# elif ((!defined __cplusplus || defined __clang__) \
+        && (201112 <= (defined __STDC_VERSION__ ? __STDC_VERSION__ : 0)  \
+            || 4 < __GNUC__ + (7 <= __GNUC_MINOR__) \
+            || (defined __apple_build_version__ \
+                ? 6000000 <= __apple_build_version__ \
+                : 3 < __clang_major__ + (5 <= __clang_minor__))))
    /* _Noreturn works as-is.  */
 # elif 2 < __GNUC__ + (8 <= __GNUC_MINOR__) || 0x5110 <= __SUNPRO_C
 #  define _Noreturn __attribute__ ((__noreturn__))
@@ -1378,6 +1309,33 @@
 
 /* Define to 1 if the system <stdint.h> predates C++11. */
 #undef __STDC_LIMIT_MACROS
+
+/* The _GL_ASYNC_SAFE marker should be attached to functions that are
+   signal handlers (for signals other than SIGABRT, SIGPIPE) or can be
+   invoked from such signal handlers.  Such functions have some restrictions:
+     * All functions that it calls should be marked _GL_ASYNC_SAFE as well,
+       or should be listed as async-signal-safe in POSIX
+       <https://pubs.opengroup.org/onlinepubs/9699919799/functions/V2_chap02.html#tag_15_04>
+       section 2.4.3.  Note that malloc(), sprintf(), and fwrite(), in
+       particular, are NOT async-signal-safe.
+     * All memory locations (variables and struct fields) that these functions
+       access must be marked 'volatile'.  This holds for both read and write
+       accesses.  Otherwise the compiler might optimize away stores to and
+       reads from such locations that occur in the program, depending on its
+       data flow analysis.  For example, when the program contains a loop
+       that is intended to inspect a variable set from within a signal handler
+           while (!signal_occurred)
+             ;
+       the compiler is allowed to transform this into an endless loop if the
+       variable 'signal_occurred' is not declared 'volatile'.
+   Additionally, recall that:
+     * A signal handler should not modify errno (except if it is a handler
+       for a fatal signal and ends by raising the same signal again, thus
+       provoking the termination of the process).  If it invokes a function
+       that may clobber errno, it needs to save and restore the value of
+       errno.  */
+#define _GL_ASYNC_SAFE
+
 
 /* Please see the Gnulib manual for how to use these macros.
 
@@ -1529,12 +1487,13 @@
    nothing if this is not supported.  Do not define if restrict is
    supported directly.  */
 #undef restrict
-/* Work around a bug in Sun C++: it does not support _Restrict or
-   __restrict__, even though the corresponding Sun C compiler ends up with
-   "#define restrict _Restrict" or "#define restrict __restrict__" in the
-   previous line.  Perhaps some future version of Sun C++ will work with
-   restrict; if so, hopefully it defines __RESTRICT like Sun C does.  */
-#if defined __SUNPRO_CC && !defined __RESTRICT
+/* Work around a bug in older versions of Sun C++, which did not
+   #define __restrict__ or support _Restrict or __restrict__
+   even though the corresponding Sun C compiler ended up with
+   "#define restrict _Restrict" or "#define restrict __restrict__"
+   in the previous line.  This workaround can be removed once
+   we assume Oracle Developer Studio 12.5 (2016) or later.  */
+#if defined __SUNPRO_CC && !defined __RESTRICT && !defined __restrict__
 # define _Restrict
 # define __restrict__
 #endif

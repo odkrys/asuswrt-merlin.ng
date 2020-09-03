@@ -19,12 +19,21 @@
 <script type="text/javascript" src="/validator.js"></script>
 <script type="text/javascript" src="/disk_functions.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
+<style>
+.charToUpperCase{
+	text-transform: uppercase;
+}
+</style>
 <script type="text/javascript">
 
 <% get_AiDisk_status(); %>
 <% get_permissions_of_account(); %>
 <% get_permissions_of_group(); %>
+
+var lan_hostname = "<% nvram_get("lan_hostname"); %>";
+var lan_domain = "<% nvram_get("lan_domain"); %>".split('.')[0];
 
 var PROTOCOL = "cifs";
 
@@ -46,9 +55,27 @@ var changedPermissions = new Array();
 var folderlist = new Array();
 
 function initial(){
-	show_menu();
+	if(re_mode == "1"){
+		$("#apply_btn").addClass("perNode_apply_gen");
+		show_loading_obj();
+	}
+	else{
+		console.log("else");
+		$("#content_table").addClass("content");
+		$("#FormTitle").addClass("FormTitle content_bg");
+		$("#apply_btn").addClass("apply_gen");
+		show_menu();
+	}
+
+	$("#FormTitle").css("display", "");
+
 	document.aidiskForm.protocol.value = PROTOCOL;
 	
+	//complete SMBv1_FAQ link
+	//document.getElementById('SMBv1_FAQ').target="_blank";
+	//document.getElementById('SMBv1_FAQ').style.textDecoration="underline";
+	//httpApi.faqURL("1037477", function(url){document.getElementById("SMBv1_FAQ").href=url;});
+
 	if(is_KR_sku){
 		document.getElementById("radio_anonymous_enable_tr").style.display = "none";
 	}
@@ -66,6 +93,8 @@ function initial(){
 	
 	// show the kinds of permission
 	showPermissionTitle();
+	document.getElementById("computer_name").placeholder = lan_hostname.toUpperCase();
+	document.getElementById("st_samba_workgroup").placeholder = lan_domain.toUpperCase();
 	
 	// show mask
 	if(get_manage_type(PROTOCOL)){
@@ -89,7 +118,7 @@ function initial(){
 
 	//short term solution for brt-ac828
 	if(based_modelid == "BRT-AC828") {
-		document.getElementById("back_app_installation").style.display = "none";
+		document.getElementById("returnBtn").style.display = "none";
 	}
 
 	if(pm_support)
@@ -670,15 +699,8 @@ function validForm(){
 		return false;
 	}	
 
-	if(document.form.computer_name.value.length == 0){
-		showtext(document.getElementById("alert_msg1"), "<#JS_fieldblank#>");
-		document.form.computer_name.focus();
-		document.form.computer_name.select();
-		return false;
-	}
-	else{
-		
-		var alert_str = validator.hostName(document.form.computer_name);
+	if(document.form.computer_name.value.length > 0){		
+		var alert_str = validator.samba_name(document.form.computer_name);
 		if(alert_str != ""){
 			showtext(document.getElementById("alert_msg1"), alert_str);
 			document.getElementById("alert_msg1").style.display = "";
@@ -689,23 +711,24 @@ function validForm(){
 		else
 			document.getElementById("alert_msg1").style.display = "none";
 
-		document.form.computer_name.value = trim(document.form.computer_name.value);
+		document.form.computer_name.value = trim(document.form.computer_name.value).toUpperCase();
 	}
 				  
-	if(document.form.st_samba_workgroup.value.length == 0){
+	if(document.form.st_samba_workgroup.value.length == 0 && !lan_domain){
 		alert("<#JS_fieldblank#>");
 		document.form.st_samba_workgroup.focus();
 		document.form.st_samba_workgroup.select();
 		return false;	
 	}
-	else{
-		var workgroup_check = new RegExp('^[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-\_\.]+$','gi');
-  		if(!workgroup_check.test(document.form.st_samba_workgroup.value)){
-			alert("<#JS_validchar#>");               
+	else if(document.form.st_samba_workgroup.value.length > 0){
+		var alert_str = validator.samba_name(document.form.st_samba_workgroup);
+		if(alert_str != ""){
+			alert(alert_str);
 			document.form.st_samba_workgroup.focus();
 			document.form.st_samba_workgroup.select();
 			return false;
-		}   
+		}
+		document.form.st_samba_workgroup.value = trim(document.form.st_samba_workgroup.value).toUpperCase();
 	}
 
 	return true;
@@ -728,7 +751,7 @@ function switchUserType(flag){
 </script>
 </head>
 
-<body onLoad="initial();" onunload="unload_body();">
+<body onLoad="initial();" onunload="unload_body();" class="bg">
 <div id="TopBanner"></div>
 
 <div id="Loading" class="popup_bg"></div>
@@ -756,7 +779,7 @@ function switchUserType(flag){
 <input type="hidden" name="modified" value="0">
 <input type="hidden" name="current_page" value="Advanced_AiDisk_samba.asp">
 
-<table width="983" border="0" align="center" cellpadding="0" cellspacing="0" class="content">
+<table id="content_table" border="0" align="center" cellpadding="0" cellspacing="0">
   <tr>
 	<td width="17">&nbsp;</td>				
 	
@@ -768,32 +791,25 @@ function switchUserType(flag){
 	<td valign="top">
 	  <div id="tabMenu" class="submenuBlock"></div>
 	  <!--=====Beginning of Main Content=====-->
-<table width="98%" border="0" align="left" cellpadding="0" cellspacing="0">
-	<tr>
-		<td valign="top">
-
-	  <table width="760px" border="0" cellpadding="5" cellspacing="0" class="FormTitle" id="FormTitle">
-
-<tbody>
-	<tr>
-		  <td bgcolor="#4D595D">
-		  <div>&nbsp;</div>
-			<div style="width:730px">
-				<table width="730px">
-					<tr>
-						<td align="left">
-							<span class="formfonttitle"><#menu5_4#> - <#menu5_4_1#><span id="clouddiskstr"> / <#Cloud_Disk#></span></span>
-						</td>
-						<td align="right">
-							<img id='back_app_installation' onclick="go_setting('/APP_Installation.asp')" align="right" style="cursor:pointer;position:absolute;margin-left:-20px;margin-top:-30px;" title="<#Menu_usb_application#>" src="/images/backprev.png" onMouseOver="this.src='/images/backprevclick.png'" onMouseOut="this.src='/images/backprev.png'">
-						</td>
-					</tr>
-				</table>
+<div id="FormTitle" align="left" border="0" cellpadding="0" cellspacing="0" style="width: 760px; display: none;">
+<table border="0" cellpadding="5" cellspacing="0">
+	<tbody>
+		<tr>
+		  <td>
+			<div style="width: 99%; margin-top: 30px; margin-bottom: 5px;">
+				<span class="formfonttitle"><#menu5_4#> - <#menu5_4_1#><span id="clouddiskstr"> / <#Cloud_Disk#></span></span>
+				<span id="returnBtn" class="returnBtn">
+					<img onclick="go_setting('/APP_Installation.asp')" align="right" title="<#Menu_usb_application#>" src="/images/backprev.png" onMouseOver="this.src='/images/backprevclick.png'" onMouseOut="this.src='/images/backprev.png'">
+				</span>
 			</div>
-			<div style="margin:5px;" class="splitLine"></div>
-			<div class="formfontdesc"><#Samba_desc#></div>
-
-			<table width="740px" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
+			<div id="splitLine" class="splitLine"></div>
+			<div class="formfontdesc" style="margin-top: 10px;"><#Samba_desc#></div>
+			<!-- div class="formfontdesc"><#ADSL_FW_note#>&nbsp;<#SMBv1_enable_hint#></div -->
+		  </td>
+		</tr>
+		<tr>
+		<td>
+			<table width="99%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3" class="FormTable">
 				<tr>
 				<th><#enableCIFS#></th>
 					<td>
@@ -845,7 +861,8 @@ function switchUserType(flag){
 						<a class="hintstyle" href="javascript:void(0);" onClick="openHint(17,2);"><#ShareNode_DeviceName_itemname#></a>
 					</th>
 					<td>
-						<div><input type="text" name="computer_name" id="computer_name" class="input_20_table" maxlength="15" value="<% nvram_get("computer_name"); %>" autocorrect="off" autocapitalize="off"><br/><span id="alert_msg1" style="color:#FC0;"></span></div>
+						<div><input type="text" name="computer_name" id="computer_name" class="input_20_table charToUpperCase" maxlength="15" value="<% nvram_get("computer_name"); %>" autocorrect="off" autocapitalize="on"><br/>
+						<span id="alert_msg1" style="color:#FC0;"></span></div>
 					</td>
 				</tr>
 				<tr>
@@ -853,7 +870,7 @@ function switchUserType(flag){
 						<a class="hintstyle" href="javascript:void(0);" onClick="openHint(17,3);"><#ShareNode_WorkGroup_itemname#></a>
 					</th>
 					<td>
-						<input type="text" name="st_samba_workgroup" class="input_20_table" maxlength="16" value="<% nvram_get("st_samba_workgroup"); %>" autocorrect="off" autocapitalize="off">
+						<input type="text" name="st_samba_workgroup" id="st_samba_workgroup" class="input_20_table charToUpperCase" maxlength="15" value="<% nvram_get("st_samba_workgroup"); %>" autocorrect="off" autocapitalize="on">
 					</td>
 				</tr>
 				<tr>
@@ -898,7 +915,7 @@ function switchUserType(flag){
 				</tr>				
 			</table>
 			
-			<div class="apply_gen">
+			<div id="apply_btn">
 					<input type="button" class="button_gen" value="<#CTL_apply#>" onclick="applyRule();">
 			</div>			
 
@@ -944,8 +961,8 @@ function switchUserType(flag){
 					</table>						
 		  		</td>
   			</tr>
-	  	  </table>
-	  	</div>
+			</table>
+			</div><!-- The table of shareStatus. -->
 	    
 		<!-- The table of accounts and folders. -->
 	    <!-- <table width="99%" height="400"  border="0" align="center" cellpadding="0" cellspacing="1" bgcolor="#999999">-->
@@ -962,7 +979,7 @@ function switchUserType(flag){
 			    <table width="480"  border="0" cellspacing="0" cellpadding="0" class="FileStatusTitle">
 		  	    <tr>
 		    	  		<td width="290" height="20" align="left">
-				    		<div class="machineName"><% nvram_get("computer_name"); %></div>
+				    		<div id="machine_name" class="machineName"><#Web_Title2#></div>
 				    	</td>
 				  <td>
 				    <div id="permissionTitle"></div>
@@ -978,21 +995,16 @@ function switchUserType(flag){
 			  </div>
 		    </td>
           </tr>
-	    </table>
-	  </td>
-	 
-	</tr>
-  </tbody>
+	      </table>
+		</td>
+		</tr>
+	</tbody>
 </table>
-	  <!-- The table of DDNS. -->
-    </td>
-  <td width="10"></td>
-  </tr>
-</table>
+</div>
 
 			</td>
     <td width="10" align="center" valign="top">&nbsp;</td>
-	</tr>
+</tr>
 </table>
 </form>
 

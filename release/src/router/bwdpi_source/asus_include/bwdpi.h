@@ -30,6 +30,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <errno.h>
 #include <sys/time.h>
 #include <signal.h>
@@ -52,6 +54,7 @@
 #define SHN_CTRL        nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/shn_ctrl" : "shn_ctrl"            // TrendMicro new sample command line
 
 // config and folder path
+#define TMP_BWDPI       nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/" : "/tmp/bwdpi/"
 #define DATABASE        nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/rule.trf" : "/tmp/bwdpi/rule.trf"
 #define QOS_CONF        nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/qosd.conf" : "/tmp/bwdpi/qosd.conf"
 #define WRS_CONF        nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/wred.conf" : "/tmp/bwdpi/wred.conf"
@@ -60,6 +63,10 @@
 #define SHN_LIB         nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/" : "/tmp/bwdpi/libshn_pctrl.so"
 #define DPI_CERT        nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/ntdasus2014.cert" : "/tmp/bwdpi/ntdasus2014.cert"
 #define DCD_EULA        nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/dcd.conf" : "/tmp/bwdpi/dcd.conf"
+#define KEYENC          nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/key.enc" : "/tmp/bwdpi/key.enc"
+#define MODELENC        nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/model.enc" : "/tmp/bwdpi/model.enc"
+#define SHNPEM          nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/shn.pem" : "/tmp/bwdpi/shn.pem"
+#define WBL_CONF        nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/wbl.conf" : "/tmp/bwdpi/wbl.conf"
 
 // kernel module
 #define TDTS            nvram_get_int("bwdpi_debug_path") ? "/jffs/TM/tdts.ko" : "/usr/bwdpi/tdts.ko"
@@ -83,6 +90,7 @@
 #define BWDPI_ANA_DIR   BWDPI_DB_DIR"/TrafficAnalyzer"
 #define BWDPI_HIS_DIR   BWDPI_DB_DIR"/WebHistory"
 #define BWDPI_MON_DIR   BWDPI_DB_DIR"/AiProtectionMonitor"
+#define BWDPI_WBL_PATH  BWDPI_DB_DIR"/WBL"
 
 // Traffic Analyzer database
 #define BWDPI_ANA_DB    (strcmp(nvram_safe_get("bwdpi_ana_path"), "")) ? nvram_safe_get("bwdpi_ana_path") : BWDPI_ANA_DIR"/TrafficAnalyzer.db"
@@ -138,6 +146,10 @@ enum{
 	INDEX_BANDWIDTH_MONITOR
 };
 
+//dpi.c
+extern int is_sig_wrs_models();
+extern int check_tdts_module_exist();
+
 //wrs.c
 void free_id_list(cid_s **target_list);
 cid_s *get_id_list(cid_s **target_list, char *target_string);
@@ -156,7 +168,6 @@ void print_group_mac(mac_g *mac_group);
 //stat.c
 extern void get_traffic_stat(char *mode, char *name, char *dura, char *date);
 extern void get_traffic_hook(char *mode, char *name, char *dura, char *date, int *retval, webs_t wp);
-extern void get_device_hook(char *MAC, int *retval, webs_t wp);
-extern void get_device_stat(char *MAC);
-extern int bwdpi_client_info(char *MAC, bwdpi_device *device);
+extern void get_device_stat();
+extern int bwdpi_client_info(char *MAC, char *ipaddr, bwdpi_device *device);
 extern void redirect_page_status(int cat_id, int *retval, webs_t wp);

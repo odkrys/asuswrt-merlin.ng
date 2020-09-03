@@ -28,7 +28,7 @@ var wans_mode ='<% nvram_get("wans_mode"); %>';
 function initial(){
 	show_menu();
 	// https://www.asus.com/support/FAQ/114110/
-	httpApi.faqURL("faq", "114110", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("114110", function(url){document.getElementById("faq").href=url;});
 	well_known_apps();
 	//parse nvram to array
 	var parseNvramToArray = function() {
@@ -252,7 +252,7 @@ function trigger_validate_duplicate(o, v, l, off){
 </script>
 </head>
 
-<body onload=" initial();" onunLoad="return unload_body();">
+<body onload=" initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 
 <div id="Loading" class="popup_bg"></div>

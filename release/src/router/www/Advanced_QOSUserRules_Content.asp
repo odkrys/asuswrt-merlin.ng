@@ -41,7 +41,7 @@ function key_event(evt){
 function initial(){
 	show_menu();
 	//	https://www.asus.com/support/FAQ/1010951/
-	httpApi.faqURL("faq", "1010951", "https://www.asus.com", "/support/FAQ/");
+	httpApi.faqURL("1010951", function(url){document.getElementById("faq").href=url;});
 	if(bwdpi_support){
 		document.getElementById('content_title').innerHTML = "<#menu5_3_2#> - <#EzQoS_type_traditional#>";
 	}
@@ -691,7 +691,7 @@ function linkport(obj){
 </script>
 </head>
 
-<body onkeydown="key_event(event);" onclick="if(isMenuopen){hideClients_Block(event)}" onLoad="initial();" onunLoad="return unload_body();">
+<body onkeydown="key_event(event);" onclick="if(isMenuopen){hideClients_Block(event)}" onLoad="initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 <div id="Loading" class="popup_bg"></div>
 <iframe name="hidden_frame" id="hidden_frame" src="" width="0" height="0" frameborder="0"></iframe>

@@ -102,11 +102,15 @@ function update_temperatures(){
 		success: function(response){
 			code = "<b>2.4 GHz:</b><span> " + curr_coreTmp_2_raw + "</span>";
 
-			if (band5g_support)
+			if (wl_info.band5g_2_support) {
+				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz-1:</b> <span>" + curr_coreTmp_5_raw + "</span>";
+				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz-2:</b> <span>" + curr_coreTmp_52_raw + "</span>";
+			} else if (band5g_support) {
 				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz:</b> <span>" + curr_coreTmp_5_raw + "</span>";
+			}
 
-			if (curr_coreTmp_cpu != "")
-				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span>" + parseInt(curr_coreTmp_cpu) +"&deg;C</span>";
+			if (curr_cpuTemp != "")
+				code +="&nbsp;&nbsp;-&nbsp;&nbsp;<b>CPU:</b> <span>" + parseInt(curr_cpuTemp) +"&deg;C</span>";
 
 			document.getElementById("temp_td").innerHTML = code;
 			setTimeout("update_temperatures();", 3000);
@@ -202,7 +206,7 @@ function show_etherstate(){
 	var wan_array;
 	var port_array= Array();
 
-	if (based_modelid == "RT-AC86U") {
+	if (hnd_support) {
 		show_etherstate_hnd();
 		return;
 	} else if ((based_modelid == "RT-N16") || (based_modelid == "RT-AC87U")
@@ -439,7 +443,7 @@ function update_sysinfo(e){
 </script>
 </head>
 
-<body onload="initial();" onunLoad="return unload_body();">
+<body onload="initial();" onunLoad="return unload_body();" class="bg">
 <div id="TopBanner"></div>
 
 <div id="Loading" class="popup_bg"></div>
@@ -625,7 +629,7 @@ function update_sysinfo(e){
 						<td id="wlc_24_td"></td>
 					</tr>
 					<tr id="wifi5_clients_tr" style="display:none;">
-						<th id="wifi51_clients_th">Wireless clients (5 GHz)</th>
+						<th id="wifi51_clients_th">Wireless Clients (5 GHz)</th>
 						<td id="wlc_51_td"></td>
 					</tr>
 					<tr id="wifi5_2_clients_tr" style="display:none;">

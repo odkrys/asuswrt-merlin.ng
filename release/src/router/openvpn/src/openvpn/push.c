@@ -50,12 +50,12 @@ static char push_reply_cmd[] = "PUSH_REPLY";
 void
 receive_auth_failed(struct context *c, const struct buffer *buffer)
 {
-    //Sam.B 2014/12/08
-    update_nvram_status(RCV_AUTH_FAILED_ERROR);
-    //Sam.E 2014/12/08
-
     msg(M_VERB0, "AUTH: Received control message: %s", BSTR(buffer));
     c->options.no_advance = true;
+
+#ifdef ASUSWRT
+    update_nvram_status(EVENT_AUTH_FAILED);
+#endif
 
     if (c->options.pull)
     {
@@ -291,11 +291,16 @@ incoming_push_message(struct context *c, const struct buffer *buffer)
     {
         if (c->options.mode == MODE_SERVER)
         {
+            struct frame *frame_fragment = NULL;
+#ifdef ENABLE_FRAGMENT
+            if (c->options.ce.fragment)
+            {
+                frame_fragment = &c->c2.frame_fragment;
+            }
+#endif
             struct tls_session *session = &c->c2.tls_multi->session[TM_ACTIVE];
-            /* Do not regenerate keys if client send a second push request */
-            if (!session->key[KS_PRIMARY].crypto_options.key_ctx_bi.initialized
-                && !tls_session_update_crypto_params(session, &c->options,
-                                                     &c->c2.frame))
+            if (!tls_session_update_crypto_params(session, &c->options,
+                                                  &c->c2.frame, frame_fragment))
             {
                 msg(D_TLS_ERRORS, "TLS Error: initializing data channel failed");
                 goto error;

@@ -43,6 +43,14 @@ define(function(){
 				]
 			}, 
 			{
+				menuName: "AiMesh",
+				index: "menu_AiMesh", 
+				tab: [
+					{url: "AiMesh.asp", tabName: "AiMesh"},
+					{url: "NULL", tabName: "__INHERIT__"}
+				]
+			},
+			{
 				menuName: "<#Guest_Network#>",
 				index: "menu_GuestNetwork",
 				tab: [
@@ -107,6 +115,15 @@ define(function(){
 					{url: "Advanced_QOSUserPrio_Content.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_QOSUserRules_Content.asp", tabName: "__INHERIT__"},
 					{url: "AdaptiveQoS_Adaptive.asp", tabName: "__INHERIT__"},
+					{url: "AdaptiveQoS_InternetSpeed.asp", tabName: "<#InternetSpeed#>"},
+					{url: "NULL", tabName: "__INHERIT__"}
+				] 
+			},
+			{
+				menuName: "网易UU加速器",
+				index: "menu_UU", 
+				tab: [
+					{url: "UUAccelerator.asp", tabName: "网易UU加速器"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -135,6 +152,22 @@ define(function(){
 				] 
 			},
 			{
+				menuName: "Open NAT",
+				index: "menu_OpenNAT", 
+				tab: [
+					{url: "GameProfile.asp", tabName: "Open NAT"},
+					{url: "NULL", tabName: "__INHERIT__"}
+				] 
+			},
+			{
+				menuName: "腾讯网游加速器",
+				index: "menu_TencentAcceleration",
+				tab: [
+					{url: "GameBoost_Tencent.asp", tabName: "Tencent Game Acceleration"},
+					{url: "NULL", tabName: "__INHERIT__"}
+				]
+			},
+			{
 				menuName: "<#Menu_usb_application#>",
 				index: "menu_APP", 
 				tab: [
@@ -147,6 +180,7 @@ define(function(){
 					{url: "PrinterServer.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_Modem_Content.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_TimeMachine.asp", tabName: "__INHERIT__"},
+					{url: "fileflex.asp", tabName: "__INHERIT__"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -190,7 +224,7 @@ define(function(){
 					{url: "Advanced_WSecurity_Content.asp", tabName: "<#menu5_1_5#>"},
 					{url: "Advanced_WAdvanced_Content.asp", tabName: "<#menu5_1_6#>"},
 					{url: "Advanced_WProxy_Content.asp", tabName: "<#WiFi_Proxy_item#>"},
-					{url: "Advanced_Roaming_Block_Content.asp", tabName: "Roaming Block List"},/* untranslated */
+					{url: "Advanced_Roaming_Block_Content.asp", tabName: "<#WiFi_Roaming_Block_List#>"},
 					{url: "Advanced_Wireless_Survey.asp", tabName: "Site Survey"},
 					{url: "WiFi_Insight.asp", tabName: "<#WiFi_radar#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
@@ -282,6 +316,7 @@ define(function(){
 					{url: "Advanced_PerformanceTuning_Content.asp", tabName: "Temperature"},
 					{url: "Advanced_ADSL_Content.asp", tabName: "<#menu_dsl_setting#>"},
 					{url: "Advanced_Feedback.asp", tabName: "<#menu_feedback#>"},
+					{url: "Feedback_Info.asp", tabName: "__INHERIT__"},
 					{url: "Advanced_SNMP_Content.asp", tabName: "SNMP"},
 					{url: "Advanced_TR069_Content.asp", tabName: "TR-069"},
 					{url: "Advanced_Notification_Content.asp", tabName: "Notification"},
@@ -312,6 +347,7 @@ define(function(){
 					{url: "Main_Analysis_Content.asp", tabName: "<#Network_Analysis#>"},
 					{url: "Main_Netstat_Content.asp", tabName: "Netstat"},
 					{url: "Main_WOL_Content.asp", tabName: "<#NetworkTools_WOL#>"},
+					// {url: "Main_ChkSta_Content.asp", tabName: "<#NetworkTools_ChkSta#>"},
 					{url: "Advanced_Smart_Connect.asp", tabName: "<#smart_connect_rule#>"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
@@ -330,11 +366,7 @@ define(function(){
 					retArray.push("DNSFilter.asp");
 				}
 
-				if(multissid_support == -1){
-					retArray.push("menu_GuestNetwork");
-				}
-
-				if(multissid_support == -1){
+				if(!multissid_support){
 					retArray.push("menu_GuestNetwork");
 				}
 
@@ -348,11 +380,23 @@ define(function(){
 					retArray.push("menu_QoS");
 				}
 
+				if(!adaptiveqos_support){	
+					for(i=0; i<menuTree.list.length; i++){
+						if(menuTree.list[i].menuName == '<#Adaptive_QoS#>'){
+							menuTree.list[i].menuName = '<#menu5_3_2#>';
+						}
+					}
+				}
+
+				if(!traffic_analyzer_support){
+					retArray.push("menu_TrafficAnalyzer");
+				}
+
 				if(!usb_support){
 					retArray.push("menu_APP");
 				}
 
-				if(!cloudsync_support && !aicloudipk_support){
+				if((!cloudsync_support && !aicloudipk_support) || nocloudsync_support){
 					retArray.push("menu_AiCloud");
 				}
 
@@ -376,12 +420,36 @@ define(function(){
 					retArray.push("menu_VLAN");
 				}
 
-				if(!wtfast_support) {
+				if(!gameMode_support) {
 					retArray.push("menu_GameBoost");
+					retArray.push("menu_OpenNAT");
+				}
+
+				if(!rog_support && !tuf_support){
+					for(i=0; i<menuTree.list.length; i++){
+						if(menuTree.list[i].menuName == '<#Game_Boost#>'){
+							menuTree.list[i].menuName = 'Game';
+						}
+					}
 				}
 
 				if(!rrsut_support)
 					retArray.push("cloud_router_sync.asp");
+
+				if(!uu_support){
+					retArray.push("menu_UU");
+				}
+
+				if(!amesh_support)
+					retArray.push("menu_AiMesh");
+				else{
+					if(ameshRouter_support){
+						if(!isSwMode("rt") && !isSwMode("ap"))
+							retArray.push("menu_AiMesh");
+					}
+					else if(ameshNode_support)
+						retArray.push("menu_AiMesh");
+				}
 
 				/* Operation Mode */
 				if(isSwMode("re")){
@@ -398,14 +466,8 @@ define(function(){
 					retArray.push("menu_Firewall");
 					retArray.push("menu_ParentalControl");
 					retArray.push("menu_QoS");
-
-					if(userRSSI_support){
-						retArray.push("menu_Wireless");
-					}
-
-					if(wlc_express != 0){
-						retArray.push("menu_Wireless");
-					}
+					retArray.push("menu_OpenNAT");
+					retArray.push("menu_Wireless");
 
 					if(ifttt_support || alexa_support){
 						retArray.push("menu_Alexa_IFTTT");
@@ -424,6 +486,7 @@ define(function(){
 					retArray.push("menu_Firewall");
 					retArray.push("menu_ParentalControl");
 					retArray.push("menu_QoS");
+					retArray.push("menu_OpenNAT");
 
 					if(ifttt_support || alexa_support){
 						retArray.push("menu_Alexa_IFTTT");
@@ -444,14 +507,11 @@ define(function(){
 					retArray.push("menu_Firewall");
 					retArray.push("menu_ParentalControl");
 					retArray.push("menu_QoS");
+					retArray.push("menu_OpenNAT");
 
 					if(ifttt_support || alexa_support){
 						retArray.push("menu_Alexa_IFTTT");
 					}
-				}
-
-				if(lyra_hide_support){
-					retArray.push("menu_Wireless");
 				}
 
 				return retArray;
@@ -472,6 +532,57 @@ define(function(){
 					retArray.push("AiProtection_Key_Guard.asp");
 					retArray.push("AiProtection_AdBlock.asp");
 					retArray.push("TrafficAnalyzer_Statistic.asp");
+				}
+
+				if(!bwdpi_mals_support){
+					retArray.push("AiProtection_MaliciousSitesBlocking.asp");
+				}
+				
+				if(!bwdpi_cc_support){
+					retArray.push("AiProtection_InfectedDevicePreventBlock.asp");
+				}
+
+				if(!bwdpi_vp_support){
+					retArray.push("AiProtection_IntrusionPreventionSystem.asp");
+				}
+
+				if(!bwdpi_webFilter_support){
+					retArray.push("AiProtection_WebProtector.asp");
+					var index = -1;
+					for(i=0;i<menuTree.list.length;i++){
+						if(menuTree.list[i].menuName == '<#AiProtection_title#>'){
+							for(j=0;j<menuTree.list[i].tab.length;j++){	
+								if(menuTree.list[i].tab[j].url == 'AiProtection_WebProtector.asp'){
+									index = j;
+								}
+
+								if(menuTree.list[i].tab[j].url == 'ParentalControl.asp'){
+									menuTree.list[i].tab[j].tabName = '<#Parental_Control#>';
+									break;
+								}		
+							}
+
+							menuTree.list[i].tab.splice(index, 1);
+						}
+					}
+				}
+
+				if(!bwdpi_webHistory_support){
+					retArray.push("AdaptiveQoS_WebHistory.asp");
+				}
+
+				if(!bwdpi_bwMonitor_support){
+					for(i=0;i<menuTree.list.length;i++){
+						if(menuTree.list[i].menuName == '<#Adaptive_QoS#>'){
+							menuTree.list[i].menuName = '<#Menu_TrafficManager#>';
+							var index = menuTree.list[i].tab.length-1;
+							menuTree.list[i].tab[index] = {url: "Main_TrafficMonitor_realtime.asp", tabName: "<#traffic_monitor#>"};
+							menuTree.list[i].tab.push({url: "Main_TrafficMonitor_last24.asp", tabName: "__INHERIT__"});
+							menuTree.list[i].tab.push({url: "Main_TrafficMonitor_daily.asp", tabName: "__INHERIT__"});
+							menuTree.list[i].tab.push({url: "NULL", tabName: "__INHERIT__"});
+						}
+					}
+					retArray.push("AdaptiveQoS_Bandwidth_Monitor.asp");
 				}
 
 				if(!traffic_analyzer_support){
@@ -511,8 +622,9 @@ define(function(){
 					retArray.push("YandexDNS.asp");
 				}
 
-				if(!feedback_support) {		
+				if(!frs_feedback_support) {		
 					retArray.push("Advanced_Feedback.asp");
+					retArray.push("Feedback_Info.asp");
 				}
 
 				if(noftp_support){
@@ -554,7 +666,7 @@ define(function(){
 					retArray.push("Advanced_Notification_Content.asp");
 				}
 
-				if(!smart_connect_support){
+				if(!smart_connect_support || Qcawifi_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 				
@@ -601,9 +713,12 @@ define(function(){
 					retArray.push("AdaptiveQoS_ROG.asp");
 				}
 
-				if(!wtfast_support){
+				if(!wtfast_support && !gameMode_support){
 					retArray.push("GameBoost.asp");
 				}
+
+				if(!tencent_qmacc_support)
+					retArray.push("GameBoost_Tencent.asp");
 
 				if(!alexa_support){
 					retArray.push("Advanced_Smart_Home_Alexa.asp");
@@ -649,6 +764,17 @@ define(function(){
 
 				if(!amesh_support)
 					retArray.push("Advanced_Roaming_Block_Content.asp");
+				else{
+					if(ameshRouter_support){
+						if(!isSwMode("rt") && !isSwMode("ap"))
+							retArray.push("Advanced_Roaming_Block_Content.asp");
+					}
+					else if(ameshNode_support)
+						retArray.push("Advanced_Roaming_Block_Content.asp");
+				}
+
+				if(!fileflex_support)
+					retArray.push("fileflex.asp");
 
 				/* Operation Mode */
 				if(isSwMode("re")){
@@ -658,13 +784,13 @@ define(function(){
 					retArray.push("Advanced_MultiSubnet_Content.asp");
 					retArray.push("Advanced_GWStaticRoute_Content.asp");
 					retArray.push("Advanced_IPTV_Content.asp");
-					retArray.push("Advanced_SwitchCtrl_Content.asp");
 					retArray.push("Main_DHCPStatus_Content.asp");
 					retArray.push("Main_IPV6Status_Content.asp");
 					retArray.push("Main_RouteStatus_Content.asp");
 					retArray.push("Main_IPTStatus_Content.asp");
 					retArray.push("Main_ConnStatus_Content.asp");
 					retArray.push("DNSFilter.asp");
+					retArray.push("Advanced_Smart_Connect.asp");
 
 					if(userRSSI_support){
 						retArray.push("Advanced_ACL_Content.asp");
@@ -685,7 +811,6 @@ define(function(){
 					retArray.push("Advanced_MultiSubnet_Content.asp");
 					retArray.push("Advanced_GWStaticRoute_Content.asp");
 					retArray.push("Advanced_IPTV_Content.asp");
-					retArray.push("Advanced_SwitchCtrl_Content.asp");
 					retArray.push("Main_DHCPStatus_Content.asp");
 					retArray.push("Main_IPV6Status_Content.asp");
 					retArray.push("Main_RouteStatus_Content.asp");
@@ -705,7 +830,6 @@ define(function(){
 					retArray.push("Advanced_MultiSubnet_Content.asp");
 					retArray.push("Advanced_GWStaticRoute_Content.asp");
 					retArray.push("Advanced_IPTV_Content.asp");
-					retArray.push("Advanced_SwitchCtrl_Content.asp");
 					retArray.push("Main_DHCPStatus_Content.asp");
 					retArray.push("Main_IPV6Status_Content.asp");
 					retArray.push("Main_RouteStatus_Content.asp");
@@ -714,9 +838,6 @@ define(function(){
 					retArray.push("Advanced_Smart_Connect.asp");
 					retArray.push("DNSFilter.asp");
 				}
-
-				if(amesh_support && (!isSwMode("rt") && !isSwMode("ap")))
-					retArray.push("Advanced_Roaming_Block_Content.asp");
 
 				/* System Status Changed */
 				// --
@@ -733,7 +854,7 @@ define(function(){
 					retArray.push("Advanced_IPTV_Content.asp");
 				}
 
-				if(based_modelid == 'RT-AC86U'){
+				if(based_modelid == 'RT-AC86U' || based_modelid == 'RT-AX88U'){
 					retArray.push("Advanced_Wireless_Survey.asp");
 				}
 				else{
@@ -750,16 +871,20 @@ define(function(){
 					retArray.push("Advanced_DHCP_Content.asp");
 				}
 
+				if(!internetSpeed_support){
+					retArray.push("AdaptiveQoS_InternetSpeed.asp");
+				}
+
 				return retArray;
 			}
 		}
 	}
 
 	if(odmpid == "RT-N66U_C1"){
-		menuTree.list.splice(7,2);
+		menuTree.list.splice(8,2);
 	}
 	else{
-		menuTree.list.splice(5,2);
+		menuTree.list.splice(6,2);
 	}
 
 	return menuTree;

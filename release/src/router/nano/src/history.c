@@ -1,8 +1,8 @@
 /**************************************************************************
  *   history.c  --  This file is part of GNU nano.                        *
  *                                                                        *
- *   Copyright (C) 2003-2011, 2013-2018 Free Software Foundation, Inc.    *
- *   Copyright (C) 2016-2017 Benno Schulenberg                            *
+ *   Copyright (C) 2003-2011, 2013-2020 Free Software Foundation, Inc.    *
+ *   Copyright (C) 2016, 2017, 2019 Benno Schulenberg                     *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
  *   it under the terms of the GNU General Public License as published    *
@@ -21,10 +21,10 @@
 
 #include "proto.h"
 
+#ifdef ENABLE_HISTORIES
+
 #include <errno.h>
 #include <string.h>
-
-#ifdef ENABLE_HISTORIES
 
 #ifndef SEARCH_HISTORY
 #define SEARCH_HISTORY "search_history"
@@ -40,29 +40,31 @@ static struct stat stat_of_positions_file;
 		/* The last-obtained stat information of the positions file. */
 static char *poshistname = NULL;
 		/* The name of the positions-history file. */
+static poshiststruct *position_history = NULL;
+		/* The list of filenames with their last cursor positions. */
 
 /* Initialize the lists of historical search and replace strings
  * and the list of historical executed commands. */
 void history_init(void)
 {
 	search_history = make_new_node(NULL);
-	search_history->data = mallocstrcpy(NULL, "");
+	search_history->data = copy_of("");
 	searchtop = search_history;
 	searchbot = search_history;
 
 	replace_history = make_new_node(NULL);
-	replace_history->data = mallocstrcpy(NULL, "");
+	replace_history->data = copy_of("");
 	replacetop = replace_history;
 	replacebot = replace_history;
 
 	execute_history = make_new_node(NULL);
-	execute_history->data = mallocstrcpy(NULL, "");
+	execute_history->data = copy_of("");
 	executetop = execute_history;
 	executebot = execute_history;
 }
 
 /* Set the current position in the given history list to the bottom. */
-void history_reset(const filestruct *list)
+void history_reset(const linestruct *list)
 {
 	if (list == search_history)
 		search_history = searchbot;
@@ -75,14 +77,14 @@ void history_reset(const filestruct *list)
 /* Return from the history list that starts at start and ends at end
  * the first node that contains the first len characters of the given
  * text, or NULL if there is no such node. */
-filestruct *find_history(const filestruct *start, const filestruct *end,
+linestruct *find_history(const linestruct *start, const linestruct *end,
 		const char *text, size_t len)
 {
-	const filestruct *item;
+	const linestruct *item;
 
 	for (item = start; item != end->prev && item != NULL; item = item->prev) {
 		if (strncmp(item->data, text, len) == 0)
-			return (filestruct *)item;
+			return (linestruct *)item;
 	}
 
 	return NULL;
@@ -90,9 +92,9 @@ filestruct *find_history(const filestruct *start, const filestruct *end,
 
 /* Update a history list (the one in which item is the current position)
  * with a fresh string text.  That is: add text, or move it to the end. */
-void update_history(filestruct **item, const char *text)
+void update_history(linestruct **item, const char *text)
 {
-	filestruct **htop = NULL, **hbot = NULL, *thesame;
+	linestruct **htop = NULL, **hbot = NULL, *thesame;
 
 	if (*item == search_history) {
 		htop = &searchtop;
@@ -110,31 +112,31 @@ void update_history(filestruct **item, const char *text)
 
 	/* If an identical string was found, delete that item. */
 	if (thesame != NULL) {
-		filestruct *after = thesame->next;
+		linestruct *after = thesame->next;
 
 		/* If the string is at the head of the list, move the head. */
 		if (thesame == *htop)
 			*htop = after;
 
 		unlink_node(thesame);
-		renumber(after);
+		renumber_from(after);
 	}
 
 	/* If the history is full, delete the oldest item (the one at the
 	 * head of the list), to make room for a new item at the end. */
 	if ((*hbot)->lineno == MAX_SEARCH_HISTORY + 1) {
-		filestruct *oldest = *htop;
+		linestruct *oldest = *htop;
 
 		*htop = (*htop)->next;
 		unlink_node(oldest);
-		renumber(*htop);
+		renumber_from(*htop);
 	}
 
 	/* Store the fresh string in the last item, then create a new item. */
 	(*hbot)->data = mallocstrcpy((*hbot)->data, text);
 	splice_node(*hbot, make_new_node(*hbot));
 	*hbot = (*hbot)->next;
-	(*hbot)->data = mallocstrcpy(NULL, "");
+	(*hbot)->data = copy_of("");
 
 	/* Indicate that the history needs to be saved on exit. */
 	history_changed = TRUE;
@@ -145,7 +147,7 @@ void update_history(filestruct **item, const char *text)
 
 /* Move h to the string in the history list just before it, and return
  * that string.  If there isn't one, don't move h and return NULL. */
-char *get_history_older(filestruct **h)
+char *get_history_older(linestruct **h)
 {
 	if ((*h)->prev == NULL)
 		return NULL;
@@ -157,7 +159,7 @@ char *get_history_older(filestruct **h)
 
 /* Move h to the string in the history list just after it, and return
  * that string.  If there isn't one, don't move h and return NULL. */
-char *get_history_newer(filestruct **h)
+char *get_history_newer(linestruct **h)
 {
 	if ((*h)->next == NULL)
 		return NULL;
@@ -167,14 +169,12 @@ char *get_history_newer(filestruct **h)
 	return (*h)->data;
 }
 
-/* More placeholders. */
-void get_history_newer_void(void)
-{
-	;
-}
+/* Two empty placeholder functions. */
 void get_history_older_void(void)
 {
-	;
+}
+void get_history_newer_void(void)
+{
 }
 
 #ifdef ENABLE_TABCOMP
@@ -182,10 +182,10 @@ void get_history_older_void(void)
  * looking at only the first len characters of s, and return that
  * string.  If there isn't one, or if len is 0, don't move h and return
  * s. */
-char *get_history_completion(filestruct **h, char *s, size_t len)
+char *get_history_completion(linestruct **h, char *s, size_t len)
 {
 	if (len > 0) {
-		filestruct *htop = NULL, *hbot = NULL, *p;
+		linestruct *htop = NULL, *hbot = NULL, *p;
 
 		if (*h == search_history) {
 			htop = searchtop;
@@ -229,19 +229,6 @@ char *get_history_completion(filestruct **h, char *s, size_t len)
 }
 #endif /* ENABLE_TABCOMP */
 
-void history_error(const char *msg, ...)
-{
-	va_list ap;
-
-	va_start(ap, msg);
-	vfprintf(stderr, _(msg), ap);
-	va_end(ap);
-
-	fprintf(stderr, _("\nPress Enter to continue\n"));
-	while (getchar() != '\n')
-		;
-}
-
 /* Check whether we have or could make a directory for history files. */
 bool have_statedir(void)
 {
@@ -280,14 +267,14 @@ bool have_statedir(void)
 			free(statepath);
 		}
 		if (mkdir(statedir, S_IRWXU) == -1) {
-			history_error(N_("Unable to create directory %s: %s\n"
+			jot_error(N_("Unable to create directory %s: %s\n"
 								"It is required for saving/loading "
 								"search history or cursor positions.\n"),
 								statedir, strerror(errno));
 			return FALSE;
 		}
 	} else if (!S_ISDIR(dirstat.st_mode)) {
-		history_error(N_("Path %s is not a directory and needs to be.\n"
+		jot_error(N_("Path %s is not a directory and needs to be.\n"
 								"Nano will be unable to load or save "
 								"search history or cursor positions.\n"),
 								statedir);
@@ -308,14 +295,14 @@ void load_history(void)
 		if (errno != ENOENT) {
 			/* When reading failed, don't save history when we quit. */
 			UNSET(HISTORYLOG);
-			history_error(N_("Error reading %s: %s"), histname,
+			jot_error(N_("Error reading %s: %s"), histname,
 						strerror(errno));
 		}
 	} else {
 		/* Load the three history lists -- first search, then replace,
 		 * then execute -- from oldest entry to newest.  Between two
 		 * lists there is an empty line. */
-		filestruct **history = &search_history;
+		linestruct **history = &search_history;
 		char *line = NULL;
 		size_t buf_len = 0;
 		ssize_t read;
@@ -344,9 +331,9 @@ void load_history(void)
 
 /* Write the lines of a history list, starting at head, from oldest to newest,
  * to the given file.  Return TRUE if writing succeeded, and FALSE otherwise. */
-bool write_list(const filestruct *head, FILE *hisfile)
+bool write_list(const linestruct *head, FILE *hisfile)
 {
-	const filestruct *item;
+	const linestruct *item;
 
 	for (item = head; item != NULL; item = item->next) {
 		size_t length = strlen(item->data);
@@ -404,7 +391,7 @@ void load_poshistory(void)
 		if (errno != ENOENT) {
 			/* When reading failed, don't save history when we quit. */
 			UNSET(POSITIONLOG);
-			history_error(N_("Error reading %s: %s"), poshistname, strerror(errno));
+			jot_error(N_("Error reading %s: %s"), poshistname, strerror(errno));
 		}
 	} else {
 		char *line = NULL, *lineptr, *xptr;
@@ -414,7 +401,7 @@ void load_poshistory(void)
 
 		/* Read and parse each line, and store the extracted data. */
 		while ((read = getline(&line, &buf_len, hisfile)) > 5) {
-			/* Decode nulls as embedded newlines. */
+			/* Decode NULs as embedded newlines. */
 			unsunder(line, read);
 
 			/* Find where the x index and line number are in the line. */
@@ -431,7 +418,7 @@ void load_poshistory(void)
 
 			/* Create a new position record. */
 			newrecord = (poshiststruct *)nmalloc(sizeof(poshiststruct));
-			newrecord->filename = mallocstrcpy(NULL, line);
+			newrecord->filename = copy_of(line);
 			newrecord->lineno = atoi(lineptr);
 			newrecord->xno = atoi(xptr);
 			newrecord->next = NULL;
@@ -484,7 +471,7 @@ void save_poshistory(void)
 						posptr->filename, posptr->lineno, posptr->xno);
 			length = strlen(path_and_place);
 
-			/* Encode newlines in filenames as nulls. */
+			/* Encode newlines in filenames as NULs. */
 			sunder(path_and_place);
 			/* Restore the terminating newline. */
 			path_and_place[length - 1] = '\n';
@@ -528,7 +515,7 @@ void update_poshistory(char *filename, ssize_t lineno, ssize_t xpos)
 	poshiststruct *posptr, *theone, *posprev = NULL;
 	char *fullpath = get_full_path(filename);
 
-	if (fullpath == NULL || fullpath[strlen(fullpath) - 1] == '/' || inhelp) {
+	if (fullpath == NULL || *filename == '\0') {
 		free(fullpath);
 		return;
 	}
@@ -563,7 +550,7 @@ void update_poshistory(char *filename, ssize_t lineno, ssize_t xpos)
 	 * not at the end, move the matching one to the end. */
 	if (theone == NULL) {
 		theone = (poshiststruct *)nmalloc(sizeof(poshiststruct));
-		theone->filename = mallocstrcpy(NULL, fullpath);
+		theone->filename = copy_of(fullpath);
 		if (position_history == NULL)
 			position_history = theone;
 		else
@@ -593,7 +580,7 @@ void update_poshistory(char *filename, ssize_t lineno, ssize_t xpos)
  * set line and column to the retrieved values. */
 bool has_old_position(const char *file, ssize_t *line, ssize_t *column)
 {
-	poshiststruct *posptr = position_history;
+	poshiststruct *posptr;
 	char *fullpath = get_full_path(file);
 
 	if (fullpath == NULL)
@@ -601,6 +588,7 @@ bool has_old_position(const char *file, ssize_t *line, ssize_t *column)
 
 	reload_positions_if_needed();
 
+	posptr = position_history;
 	while (posptr != NULL && strcmp(posptr->filename, fullpath) != 0)
 		posptr = posptr->next;
 

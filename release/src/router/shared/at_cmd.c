@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <sys/file.h>
+#include <fcntl.h>		//open(), O_CREAT, O_RDWR
 
 #include "shared.h"
 #include "bcmnvram.h"
@@ -147,7 +148,6 @@ static inline char * find_field(const char *buf, const char sep, int num, char *
 	return NULL;
 }
 
-#define skip_space(p)	{if(p != NULL){ while(isspace(*p)) p++;}}
 #define cut_space(p)	{if(p != NULL){ int idx = strlen(p) -1; while(idx > 0 && isspace(p[idx])) p[idx--] = '\0';}}
 
 // system("chat -t 1 -e '' 'AT+CPIN?' OK >> /dev/ttyACM0 < /dev/ttyACM0 2>/tmp/at_cpin; grep OK /tmp/at_cpin -q && v=PASS || v=FAIL; echo $v");
@@ -350,6 +350,13 @@ char * Gobi_FwVersion(int unit, char *line, int size)
 	{
 		skip_space(p);
 		cut_space(p);
+
+#if defined(RT4GAC53U)
+		char *ptr = NULL;
+		if ((ptr = strstr(p, " [")))
+			*ptr = '\0';
+		sprintf(line, "WWHC%s", p);
+#endif
 	}
 	return p;
 }
